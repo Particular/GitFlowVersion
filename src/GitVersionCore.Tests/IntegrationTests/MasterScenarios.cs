@@ -233,7 +233,7 @@ public class MasterScenarios : TestBase
     }
 
     [Test]
-    public void Bug1255()
+    public void ShouldProvideTheCorrectVersionEvenIfPreReleaseLabelExistsInTheGitTag()
     {
         var config = new Config
         {
