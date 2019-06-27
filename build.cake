@@ -2,23 +2,26 @@
 #module nuget:?package=Cake.DotNetTool.Module&version=0.2.0
 
 // Install addins.
-#addin "nuget:?package=Cake.Gitter&version=0.10.0"
+#addin "nuget:?package=Cake.Codecov&version=0.6.0"
+#addin "nuget:?package=Cake.Coverlet&version=2.2.1"
 #addin "nuget:?package=Cake.Docker&version=0.10.0"
-#addin "nuget:?package=Cake.Npm&version=0.16.0"
+#addin "nuget:?package=Cake.Gem&version=0.8.0"
+#addin "nuget:?package=Cake.Gitter&version=0.11.0"
 #addin "nuget:?package=Cake.Incubator&version=5.0.1"
 #addin "nuget:?package=Cake.Json&version=3.0.0"
-#addin "nuget:?package=Cake.Tfx&version=0.8.0"
-#addin "nuget:?package=Cake.Gem&version=0.7.0"
-#addin "nuget:?package=Cake.Coverlet&version=2.2.1"
-#addin "nuget:?package=Cake.Codecov&version=0.5.0"
+#addin "nuget:?package=Cake.Npm&version=0.17.0"
+#addin "nuget:?package=Cake.Tfx&version=0.9.0"
+#addin "nuget:?package=Cake.Gem&version=0.8.0"
+
 #addin "nuget:?package=Newtonsoft.Json&version=9.0.1"
 #addin "nuget:?package=xunit.assert&version=2.4.1"
 
 // Install tools.
+#tool "nuget:?package=vswhere"
 #tool "nuget:?package=NUnit.ConsoleRunner&version=3.10.0"
 #tool "nuget:?package=ILRepack&version=2.0.16"
-#tool "nuget:?package=Codecov&version=1.4.0"
-#tool "nuget:?package=nuget.commandline&version=4.9.4"
+#tool "nuget:?package=Codecov&version=1.5.0"
+#tool "nuget:?package=nuget.commandline&version=5.0.2"
 
 // Install .NET Core Global tools.
 #tool "dotnet:?package=GitReleaseManager.Tool&version=0.8.0"
@@ -28,6 +31,7 @@
 #load "./build/utils.cake"
 
 using Xunit;
+using System.Diagnostics;
 //////////////////////////////////////////////////////////////////////
 // PARAMETERS
 //////////////////////////////////////////////////////////////////////
@@ -234,6 +238,24 @@ Task("Copy-Files")
         MSBuildSettings = parameters.MSBuildSettings
     });
 
+    DotNetCorePublish("./src/GitVersionTask/GitVersionTask.csproj", new DotNetCorePublishSettings
+    {
+        Framework = parameters.FullFxVersion,
+        NoBuild = true,
+        NoRestore = true,
+        Configuration = parameters.Configuration,
+        MSBuildSettings = parameters.MSBuildSettings
+    });
+
+    // .NET Core
+    DotNetCorePublish("./src/GitVersionTask/GitVersionTask.csproj", new DotNetCorePublishSettings
+    {
+        Framework = parameters.CoreFxVersion,
+        NoBuild = true,
+        NoRestore = true,
+        Configuration = parameters.Configuration,
+        MSBuildSettings = parameters.MSBuildSettings
+    });
     var ilMergeDir = parameters.Paths.Directories.ArtifactsBinFullFxILMerge;
     var portableDir = parameters.Paths.Directories.ArtifactsBinFullFxPortable.Combine("tools");
     var cmdlineDir = parameters.Paths.Directories.ArtifactsBinFullFxCmdline.Combine("tools");
@@ -288,9 +310,9 @@ Task("Pack-Tfs")
     UpdateTaskVersion(new FilePath(workDir + "/GitVersionNetCoreTask/task.json"), taskIdCoreFx, parameters.Version.GitVersion);
 
     // build and pack
-    NpmSet("progress", "false");
-    NpmInstall(new NpmInstallSettings { WorkingDirectory = workDir, LogLevel = NpmLogLevel.Silent });
-    NpmRunScript(new NpmRunScriptSettings { WorkingDirectory = workDir, ScriptName = "build", LogLevel = NpmLogLevel.Silent });
+    NpmSet(new NpmSetSettings             { WorkingDirectory = workDir, LogLevel = NpmLogLevel.Silent, Key = "progress", Value = "false" });
+    NpmInstall(new NpmInstallSettings     { WorkingDirectory = workDir, LogLevel = NpmLogLevel.Silent });
+    NpmRunScript(new NpmRunScriptSettings { WorkingDirectory = workDir, LogLevel = NpmLogLevel.Silent, ScriptName = "build" });
 
     var settings = new TfxExtensionCreateSettings
     {
@@ -406,17 +428,11 @@ Task("Zip-Files")
 
 Task("Docker-Build")
     .WithCriteria<BuildParameters>((context, parameters) => !parameters.IsRunningOnMacOS, "Docker can be built only on Windows or Linux agents.")
-    .WithCriteria<BuildParameters>((context, parameters) => parameters.IsStableRelease() || parameters.IsPreRelease(), "Docker-Build works only for releases.")
+    .WithCriteria<BuildParameters>((context, parameters) => parameters.IsRunningOnAzurePipeline, "Docker-Build works only on AzurePipeline.")
     .IsDependentOn("Copy-Files")
     .Does<BuildParameters>((parameters) =>
 {
-    var images = parameters.IsRunningOnWindows
-            ? parameters.Docker.Windows
-            : parameters.IsRunningOnLinux
-                ? parameters.Docker.Linux
-                : Array.Empty<DockerImage>();
-
-    foreach(var dockerImage in images)
+    foreach(var dockerImage in parameters.Docker.Images)
     {
         DockerBuild(dockerImage, parameters);
     }
@@ -424,7 +440,7 @@ Task("Docker-Build")
 
 Task("Docker-Test")
     .WithCriteria<BuildParameters>((context, parameters) => !parameters.IsRunningOnMacOS, "Docker can be tested only on Windows or Linux agents.")
-    .WithCriteria<BuildParameters>((context, parameters) => parameters.IsStableRelease() || parameters.IsPreRelease(), "Docker-Test works only for releases.")
+    .WithCriteria<BuildParameters>((context, parameters) => parameters.IsRunningOnAzurePipeline, "Docker-Test works only on AzurePipeline.")
     .IsDependentOn("Docker-Build")
     .Does<BuildParameters>((parameters) =>
 {
@@ -436,13 +452,7 @@ Task("Docker-Test")
         Volume = new[] { $"{currentDir}:{containerDir}" }
     };
 
-    var images = parameters.IsRunningOnWindows
-            ? parameters.Docker.Windows
-            : parameters.IsRunningOnLinux
-                ? parameters.Docker.Linux
-                : Array.Empty<DockerImage>();
-
-    foreach(var dockerImage in images)
+    foreach(var dockerImage in parameters.Docker.Images)
     {
         var tags = GetDockerTags(dockerImage, parameters);
         foreach (var tag in tags)
@@ -670,15 +680,9 @@ Task("Publish-DockerHub")
         throw new InvalidOperationException("Could not resolve Docker password.");
     }
 
-    DockerLogin(parameters.Credentials.Docker.UserName, parameters.Credentials.Docker.Password);
+    DockerStdinLogin(username, password);
 
-    var images = parameters.IsRunningOnWindows
-            ? parameters.Docker.Windows
-            : parameters.IsRunningOnLinux
-                ? parameters.Docker.Linux
-                : Array.Empty<DockerImage>();
-
-    foreach(var dockerImage in images)
+    foreach(var dockerImage in parameters.Docker.Images)
     {
         DockerPush(dockerImage, parameters);
     }

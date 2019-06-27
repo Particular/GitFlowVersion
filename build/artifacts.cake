@@ -96,25 +96,24 @@ public class BuildArtifact
 
 public class DockerImages
 {
-    public ICollection<DockerImage> Windows { get; private set; }
-    public ICollection<DockerImage> Linux { get; private set; }
+    public ICollection<DockerImage> Images { get; private set; }
 
-    public static DockerImages GetDockerImages(ICakeContext context, FilePath[] dockerfiles)
+    public static DockerImages GetDockerImages(BuildParameters parameters, FilePath[] dockerfiles)
     {
-        foreach (var file in dockerfiles)
-        {
-            var segments = file.Segments.Reverse().ToArray();
-            var distro = segments[1];
-            var os = segments[2];
-            var targetFramework = segments[3];
-            context.Information($"{os}-{distro}-{targetFramework}");
-        }
         var toDockerImage = DockerImage();
         var dockerImages = dockerfiles.Select(toDockerImage).ToArray();
 
+        var windowsImages = dockerImages.Where(x => x.OS == "windows").ToArray();
+        var linuxImages = dockerImages.Where(x => x.OS == "linux").ToArray();
+
+        var images = parameters.IsRunningOnWindows
+            ? windowsImages
+            : parameters.IsRunningOnLinux
+                ? linuxImages
+                : Array.Empty<DockerImage>();
+
         return new DockerImages {
-            Windows = dockerImages.Where(x => x.OS == "windows").ToArray(),
-            Linux = dockerImages.Where(x => x.OS == "linux").ToArray(),
+            Images = images
         };
     }
 
