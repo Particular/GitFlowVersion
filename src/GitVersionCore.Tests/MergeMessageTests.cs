@@ -3,19 +3,20 @@ using NUnit.Framework;
 using Shouldly;
 using System;
 using System.Collections.Generic;
+using GitVersion.Configuration;
 
 namespace GitVersionCore.Tests
 {
     [TestFixture]
     public class MergeMessageTests : TestBase
     {
-        private readonly Config _config = new Config { TagPrefix = "[vV]" };
+        private readonly Config config = new Config { TagPrefix = "[vV]" };
 
         [Test]
         public void NullMessageStringThrows()
         {
             // Act / Assert
-            Should.Throw<NullReferenceException>(() => new MergeMessage(null, _config));
+            Should.Throw<NullReferenceException>(() => new MergeMessage(null, config));
         }
 
         [TestCase("")]
@@ -23,7 +24,7 @@ namespace GitVersionCore.Tests
         public void EmptyMessageString(string message)
         {
             // Act
-            var sut = new MergeMessage(message, _config);
+            var sut = new MergeMessage(message, config);
 
             // Assert
             sut.TargetBranch.ShouldBeNull();
@@ -72,7 +73,7 @@ namespace GitVersionCore.Tests
             SemanticVersion expectedVersion)
         {
             // Act
-            var sut = new MergeMessage(message, _config);
+            var sut = new MergeMessage(message, config);
 
             // Assert
             sut.FormatName.ShouldBe("Default");
@@ -103,7 +104,7 @@ namespace GitVersionCore.Tests
             int? expectedPullRequestNumber)
         {
             // Act
-            var sut = new MergeMessage(message, _config);
+            var sut = new MergeMessage(message, config);
 
             // Assert
             sut.FormatName.ShouldBe("GitHubPull");
@@ -137,7 +138,7 @@ namespace GitVersionCore.Tests
             int? expectedPullRequestNumber)
         {
             // Act
-            var sut = new MergeMessage(message, _config);
+            var sut = new MergeMessage(message, config);
 
             // Assert
             sut.FormatName.ShouldBe("BitBucketPull");
@@ -168,7 +169,7 @@ namespace GitVersionCore.Tests
             SemanticVersion expectedVersion)
         {
             // Act
-            var sut = new MergeMessage(message, _config);
+            var sut = new MergeMessage(message, config);
 
             // Assert
             sut.FormatName.ShouldBe("SmartGit");
@@ -198,7 +199,7 @@ namespace GitVersionCore.Tests
             SemanticVersion expectedVersion)
         {
             // Act
-            var sut = new MergeMessage(message, _config);
+            var sut = new MergeMessage(message, config);
 
             // Assert
             sut.FormatName.ShouldBe("RemoteTracking");
@@ -225,7 +226,7 @@ namespace GitVersionCore.Tests
             int? expectedPullRequestNumber)
         {
             // Act
-            var sut = new MergeMessage(message, _config);
+            var sut = new MergeMessage(message, config);
 
             // Assert
             sut.FormatName.ShouldBeNull();
@@ -242,13 +243,13 @@ namespace GitVersionCore.Tests
             // Arrange
             var message = "My custom message";
             var definition = "Mycustom";
-            _config.MergeMessageFormats = new Dictionary<string, string>
+            config.MergeMessageFormats = new Dictionary<string, string>
             {
                 [definition] = message
             };
 
             // Act
-            var sut = new MergeMessage(message, _config);
+            var sut = new MergeMessage(message, config);
 
             // Assert
             sut.FormatName.ShouldBe(definition);
@@ -265,7 +266,7 @@ namespace GitVersionCore.Tests
             // Arrange
             var format = "My custom message";
             var definition = "Mycustom";
-            _config.MergeMessageFormats = new Dictionary<string, string>
+            config.MergeMessageFormats = new Dictionary<string, string>
             {
                 ["Default2"] = "some example",
                 ["Default3"] = "another example",
@@ -273,7 +274,7 @@ namespace GitVersionCore.Tests
             };
 
             // Act
-            var sut = new MergeMessage(format, _config);
+            var sut = new MergeMessage(format, config);
 
             // Assert
             sut.FormatName.ShouldBe(definition);
@@ -290,7 +291,7 @@ namespace GitVersionCore.Tests
             // Arrange
             var format = @"^Merged PR #(?<PullRequestNumber>\d+) into (?<TargetBranch>[^\s]*) from (?:(?<SourceBranch>[^\s]*))";
             var definition = "Mycustom";
-            _config.MergeMessageFormats = new Dictionary<string, string>
+            config.MergeMessageFormats = new Dictionary<string, string>
             {
                 [definition] = format
             };
@@ -300,7 +301,7 @@ namespace GitVersionCore.Tests
 
 
             // Act
-            var sut = new MergeMessage($"Merged PR #{pr} into {target} from {source}", _config);
+            var sut = new MergeMessage($"Merged PR #{pr} into {target} from {source}", config);
 
             // Assert
             sut.FormatName.ShouldBe(definition);
@@ -317,7 +318,7 @@ namespace GitVersionCore.Tests
             // Arrange
             var format = @"^Merge (branch|tag) '(?<SourceBranch>[^']*)'(?: into (?<TargetBranch>[^\s]*))*";
             var definition = "Mycustom";
-            _config.MergeMessageFormats = new Dictionary<string, string>
+            config.MergeMessageFormats = new Dictionary<string, string>
             {
                 [definition] = format,
                 ["Default2"] = format,
@@ -325,7 +326,7 @@ namespace GitVersionCore.Tests
             };
 
             // Act
-            var sut = new MergeMessage("Merge branch 'this'", _config);
+            var sut = new MergeMessage("Merge branch 'this'", config);
 
             // Assert
             sut.FormatName.ShouldBe(definition);

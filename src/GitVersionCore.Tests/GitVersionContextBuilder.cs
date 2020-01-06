@@ -1,13 +1,16 @@
-﻿namespace GitVersionCore.Tests
-{
-    using GitTools.Testing;
-    using GitVersion;
-    using LibGit2Sharp;
+using GitTools.Testing;
+using GitVersion;
+using GitVersion.Configuration;
+using GitVersion.Logging;
+using GitVersionCore.Tests.Mocks;
+using LibGit2Sharp;
 
+namespace GitVersionCore.Tests
+{
     public class GitVersionContextBuilder
     {
-        IRepository repository;
-        Config config;
+        private IRepository repository;
+        private Config config;
 
         public GitVersionContextBuilder WithRepository(IRepository repository)
         {
@@ -60,12 +63,12 @@
         public GitVersionContext Build()
         {
             var configuration = config ?? new Config();
-            ConfigurationProvider.ApplyDefaultsTo(configuration);
+            configuration.Reset();
             var repo = repository ?? CreateRepository();
-            return new GitVersionContext(repo, repo.Head, configuration);
+            return new GitVersionContext(repo, new NullLog(), repo.Head, configuration);
         }
 
-        IRepository CreateRepository()
+        private IRepository CreateRepository()
         {
             var mockBranch = new MockBranch("master") { new MockCommit { CommitterEx = Generate.SignatureNow() } };
             var mockRepository = new MockRepository

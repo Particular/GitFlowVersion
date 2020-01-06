@@ -1,23 +1,23 @@
-﻿namespace GitVersion.Helpers
-{
-    using System;
-    using System.Collections.Generic;
-    using System.ComponentModel;
-    using System.Diagnostics;
-    using System.IO;
-    using System.Runtime.InteropServices;
-    using System.Threading;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
 
+namespace GitVersion.Helpers
+{
     public static class ProcessHelper
     {
-        static volatile object lockObject = new object();
+        private static readonly object LockObject = new object();
 
         // http://social.msdn.microsoft.com/Forums/en/netfxbcl/thread/f6069441-4ab1-4299-ad6a-b8bb9ed36be3
-        public static Process Start(ProcessStartInfo startInfo)
+        private static Process Start(ProcessStartInfo startInfo)
         {
             Process process;
 
-            lock (lockObject)
+            lock (LockObject)
             {
                 using (new ChangeErrorMode(ErrorModes.FailCriticalErrors | ErrorModes.NoGpFaultErrorBox))
                 {
@@ -34,14 +34,12 @@
                                 break;
 
                             case NativeErrorCode.FileNotFound:
-                                throw new FileNotFoundException(string.Format("The executable file '{0}' could not be found.",
-                                        startInfo.FileName),
+                                throw new FileNotFoundException($"The executable file '{startInfo.FileName}' could not be found.",
                                     startInfo.FileName,
                                     exception);
 
                             case NativeErrorCode.PathNotFound:
-                                throw new DirectoryNotFoundException(string.Format("The path to the executable file '{0}' could not be found.",
-                                        startInfo.FileName),
+                                throw new DirectoryNotFoundException($"The path to the executable file '{startInfo.FileName}' could not be found.",
                                     exception);
                         }
 
@@ -83,12 +81,12 @@
         // http://csharptest.net/532/using-processstart-to-capture-console-output/
         public static int Run(Action<string> output, Action<string> errorOutput, TextReader input, string exe, string args, string workingDirectory, params KeyValuePair<string, string>[] environmentalVariables)
         {
-            if (String.IsNullOrEmpty(exe))
-                throw new ArgumentNullException("exe");
+            if (string.IsNullOrEmpty(exe))
+                throw new ArgumentNullException(nameof(exe));
             if (output == null)
-                throw new ArgumentNullException("output");
+                throw new ArgumentNullException(nameof(output));
 
-            workingDirectory = workingDirectory ?? Environment.CurrentDirectory;
+            workingDirectory ??= System.Environment.CurrentDirectory;
 
             var psi = new ProcessStartInfo
             {
@@ -114,45 +112,45 @@
                     psi.EnvironmentVariables.Add(environmentalVariable.Key, environmentalVariable.Value);
                 }
                 if (psi.EnvironmentVariables.ContainsKey(environmentalVariable.Key) && environmentalVariable.Value == null)
+                {
                     psi.EnvironmentVariables.Remove(environmentalVariable.Key);
+                }
             }
 
-            using (var process = Start(psi))
-            using (var mreOut = new ManualResetEvent(false))
-            using (var mreErr = new ManualResetEvent(false))
+            using var process = Start(psi);
+            using var mreOut = new ManualResetEvent(false);
+            using var mreErr = new ManualResetEvent(false);
+            process.EnableRaisingEvents = true;
+            process.OutputDataReceived += (o, e) =>
             {
-                process.EnableRaisingEvents = true;
-                process.OutputDataReceived += (o, e) =>
-                {
-                    // ReSharper disable once AccessToDisposedClosure
-                    if (e.Data == null)
-                        mreOut.Set();
-                    else
-                        output(e.Data);
-                };
-                process.BeginOutputReadLine();
-                process.ErrorDataReceived += (o, e) =>
-                {
-                    // ReSharper disable once AccessToDisposedClosure
-                    if (e.Data == null)
-                        mreErr.Set();
-                    else
-                        errorOutput(e.Data);
-                };
-                process.BeginErrorReadLine();
+                // ReSharper disable once AccessToDisposedClosure
+                if (e.Data == null)
+                    mreOut.Set();
+                else
+                    output(e.Data);
+            };
+            process.BeginOutputReadLine();
+            process.ErrorDataReceived += (o, e) =>
+            {
+                // ReSharper disable once AccessToDisposedClosure
+                if (e.Data == null)
+                    mreErr.Set();
+                else
+                    errorOutput(e.Data);
+            };
+            process.BeginErrorReadLine();
 
-                string line;
-                while (input != null && null != (line = input.ReadLine()))
-                    process.StandardInput.WriteLine(line);
+            string line;
+            while (input != null && null != (line = input.ReadLine()))
+                process.StandardInput.WriteLine(line);
 
-                process.StandardInput.Close();
-                process.WaitForExit();
+            process.StandardInput.Close();
+            process.WaitForExit();
 
-                mreOut.WaitOne();
-                mreErr.WaitOne();
+            mreOut.WaitOne();
+            mreErr.WaitOne();
 
-                return process.ExitCode;
-            }
+            return process.ExitCode;
         }
 
         /// <summary>
@@ -176,9 +174,9 @@
             NoOpenFileErrorBox = 0x8000
         }
 
-        public struct ChangeErrorMode : IDisposable
+        private struct ChangeErrorMode : IDisposable
         {
-            readonly int oldMode;
+            private readonly int oldMode;
 
             public ChangeErrorMode(ErrorModes mode)
             {
@@ -186,7 +184,7 @@
                 {
                     oldMode = SetErrorMode((int)mode);
                 }
-                catch (EntryPointNotFoundException)
+                catch (Exception ex) when (ex is EntryPointNotFoundException || ex is DllNotFoundException)
                 {
                     oldMode = (int)mode;
                 }
@@ -199,14 +197,14 @@
                 {
                     SetErrorMode(oldMode);
                 }
-                catch (EntryPointNotFoundException)
+                catch (Exception ex) when (ex is EntryPointNotFoundException || ex is DllNotFoundException)
                 {
                     // NOTE: Mono doesn't support DllImport("kernel32.dll") and its SetErrorMode method, obviously. @asbjornu
                 }
             }
 
             [DllImport("kernel32.dll")]
-            static extern int SetErrorMode(int newMode);
+            private static extern int SetErrorMode(int newMode);
         }
     }
 }

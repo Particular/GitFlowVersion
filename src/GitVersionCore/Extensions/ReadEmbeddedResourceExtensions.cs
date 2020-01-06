@@ -1,7 +1,7 @@
-﻿namespace GitVersionCore.Extensions
-{
-    using System.IO;
+using System.IO;
 
+namespace GitVersion.Extensions
+{
     public static class ReadEmbeddedResourceExtensions
     {
         /// <summary>
@@ -12,16 +12,12 @@
         /// <returns></returns>
         public static string ReadAsStringFromEmbeddedResource<T>(this string resourceName)
         {
-            using (var stream = resourceName.ReadFromEmbeddedResource<T>())
-            {
-                using (var rdr = new StreamReader(stream))
-                {
-                    return rdr.ReadToEnd();
-                }
-            }
+            using var stream = resourceName.ReadFromEmbeddedResource<T>();
+            using var rdr = new StreamReader(stream);
+            return rdr.ReadToEnd();
         }
 
-        public static Stream ReadFromEmbeddedResource<T>(this string resourceName)
+        private static Stream ReadFromEmbeddedResource<T>(this string resourceName)
         {
             var assembly = typeof(T).Assembly;
 

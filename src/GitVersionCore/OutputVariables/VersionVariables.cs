@@ -1,15 +1,12 @@
-namespace GitVersion
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using YamlDotNet.Serialization;
+
+namespace GitVersion.OutputVariables
 {
-    using System;
-    using System.Collections;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using GitVersion.Helpers;
- 
-
-    using YamlDotNet.Serialization;
-
     public class VersionVariables : IEnumerable<KeyValuePair<string, string>>
     {
         public VersionVariables(string major,
@@ -124,13 +121,7 @@ namespace GitVersion
         public string FileName { get; set; }
 
         [ReflectionIgnore]
-        public string this[string variable]
-        {
-            get
-            {
-                return typeof(VersionVariables).GetProperty(variable).GetValue(this, null) as string;
-            }
-        }
+        public string this[string variable] => typeof(VersionVariables).GetProperty(variable)?.GetValue(this, null) as string;
 
         public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
         {
@@ -162,16 +153,12 @@ namespace GitVersion
 
         public static VersionVariables FromFile(string filePath, IFileSystem fileSystem)
         {
-            using (var stream = fileSystem.OpenRead(filePath))
-            {
-                using (var reader = new StreamReader(stream))
-                {
-                    var dictionary = new Deserializer().Deserialize<Dictionary<string, string>>(reader);
-                    var versionVariables = FromDictionary(dictionary);
-                    versionVariables.FileName = filePath;
-                    return versionVariables;
-                }
-            }
+            using var stream = fileSystem.OpenRead(filePath);
+            using var reader = new StreamReader(stream);
+            var dictionary = new Deserializer().Deserialize<Dictionary<string, string>>(reader);
+            var versionVariables = FromDictionary(dictionary);
+            versionVariables.FileName = filePath;
+            return versionVariables;
         }
 
         public bool TryGetValue(string variable, out string variableValue)
@@ -191,7 +178,7 @@ namespace GitVersion
             return typeof(VersionVariables).GetProperty(variable) != null;
         }
 
-        sealed class ReflectionIgnoreAttribute : Attribute
+        private sealed class ReflectionIgnoreAttribute : Attribute
         {
         }
     }

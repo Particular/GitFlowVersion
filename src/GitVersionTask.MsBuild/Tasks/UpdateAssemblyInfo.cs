@@ -1,7 +1,7 @@
-namespace GitVersionTask.MsBuild.Tasks
-{
-    using Microsoft.Build.Framework;
+using Microsoft.Build.Framework;
 
+namespace GitVersion.MSBuildTask.Tasks
+{
     public class UpdateAssemblyInfo : GitVersionTaskBase
     {
         [Required]

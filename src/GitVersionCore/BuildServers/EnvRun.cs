@@ -1,18 +1,25 @@
-﻿namespace GitVersion
-{
-    using System;
-    using System.IO;
+using System.IO;
+using GitVersion.OutputVariables;
+using GitVersion.Logging;
 
+namespace GitVersion.BuildServers
+{
     public class EnvRun : BuildServerBase
     {
+        public EnvRun(IEnvironment environment, ILog log) : base(environment, log)
+        {
+        }
+
+        public const string EnvironmentVariableName = "ENVRUN_DATABASE";
+        protected override string EnvironmentVariable { get; } = EnvironmentVariableName;
         public override bool CanApplyToCurrentContext()
         {
-            string envRunDatabasePath = Environment.GetEnvironmentVariable("ENVRUN_DATABASE");
+            var envRunDatabasePath = Environment.GetEnvironmentVariable(EnvironmentVariableName);
             if (!string.IsNullOrEmpty(envRunDatabasePath))
             {
                 if (!File.Exists(envRunDatabasePath))
                 {
-                    Logger.WriteError(string.Format("The database file of EnvRun.exe was not found at {0}.", envRunDatabasePath));
+                    Log.Error($"The database file of EnvRun.exe was not found at {envRunDatabasePath}.");
                     return false;
                 }
 
@@ -31,14 +38,9 @@
         {
             return new[]
             {
-                string.Format("@@envrun[set name='GitVersion_{0}' value='{1}']", name, value)
+                $"@@envrun[set name='GitVersion_{name}' value='{value}']"
             };
         }
-
-        public override bool PreventFetch()
-        {
-            return true;
-        }
-
+        public override bool PreventFetch() => true;
     }
 }

@@ -3,18 +3,20 @@ using GitTools.Testing;
 using LibGit2Sharp;
 using NUnit.Framework;
 using Shouldly;
+using GitVersionExe.Tests.Helpers;
 
-[TestFixture]
-public class PullRequestInTeamCityTest
+namespace GitVersionExe.Tests
 {
-
-    [TestCase("refs/pull-requests/5/merge")]
-    [TestCase("refs/pull/5/merge")]
-    [TestCase("refs/heads/pull/5/head")]
-    public void GivenARemoteWithATagOnMaster_AndAPullRequestWithTwoCommits_AndBuildIsRunningInTeamCity_VersionIsCalculatedProperly(string pullRequestRef)
+    [TestFixture]
+    public class PullRequestInTeamCityTest
     {
-        using (var fixture = new EmptyRepositoryFixture())
+
+        [TestCase("refs/pull-requests/5/merge")]
+        [TestCase("refs/pull/5/merge")]
+        [TestCase("refs/heads/pull/5/head")]
+        public void GivenARemoteWithATagOnMasterAndAPullRequestWithTwoCommitsAndBuildIsRunningInTeamCityVersionIsCalculatedProperly(string pullRequestRef)
         {
+            using var fixture = new EmptyRepositoryFixture();
             var remoteRepositoryPath = PathHelper.GetTempPath();
             Repository.Init(remoteRepositoryPath);
             using (var remoteRepository = new Repository(remoteRepositoryPath))

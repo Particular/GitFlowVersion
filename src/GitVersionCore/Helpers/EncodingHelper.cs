@@ -1,15 +1,15 @@
-﻿namespace GitVersion.Helpers
-{
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Linq;
-    using System.Text;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
 
+namespace GitVersion.Helpers
+{
     public static class EncodingHelper
     {
-        private static IList<Encoding> EncodingsWithPreambles;
+        private static IList<Encoding> encodingsWithPreambles;
 
-        private static int MaxPreambleLength;
+        private static int maxPreambleLength;
 
         /// <summary>
         /// Detects the encoding of a file if and only if it includes a preamble .
@@ -23,26 +23,24 @@
                 return null;
             }
 
-            if (EncodingsWithPreambles == null)
+            if (encodingsWithPreambles == null)
             {
                 ScanEncodings();
             }
 
-            using (var stream = File.OpenRead(filename))
+            using var stream = File.OpenRead(filename);
+            // No bytes? No encoding!
+            if (stream.Length == 0)
             {
-                // No bytes? No encoding!
-                if (stream.Length == 0)
-                {
-                    return null;
-                }
-
-                // Read the minimum amount necessary.
-                var length = stream.Length > MaxPreambleLength ? MaxPreambleLength : stream.Length;
-
-                var bytes = new byte[length];
-                stream.Read(bytes, 0, (int)length);
-                return DetectEncoding(bytes);
+                return null;
             }
+
+            // Read the minimum amount necessary.
+            var length = stream.Length > maxPreambleLength ? maxPreambleLength : stream.Length;
+
+            var bytes = new byte[length];
+            stream.Read(bytes, 0, (int)length);
+            return DetectEncoding(bytes);
         }
 
         /// <summary>
@@ -57,12 +55,12 @@
                 return null;
             }
 
-            if (EncodingsWithPreambles == null)
+            if (encodingsWithPreambles == null)
             {
                 ScanEncodings();
             }
 
-            return EncodingsWithPreambles.FirstOrDefault(encoding => PreambleMatches(encoding, bytes));
+            return encodingsWithPreambles.FirstOrDefault(encoding => PreambleMatches(encoding, bytes));
         }
 
         /// <summary>
@@ -74,15 +72,15 @@
         private static void ScanEncodings()
         {
             var encodings = (Encoding.GetEncodings());
-            EncodingsWithPreambles = (from info in encodings
+            encodingsWithPreambles = (from info in encodings
                                       let encoding = info.GetEncoding()
                                       let preamble = encoding.GetPreamble()
                                       where preamble.Length > 0
                                       orderby preamble.Length descending
                                       select encoding).ToList();
 
-            var encodingWithLongestPreamble = EncodingsWithPreambles.FirstOrDefault();
-            MaxPreambleLength = encodingWithLongestPreamble == null ? 0 : encodingWithLongestPreamble.GetPreamble().Length;
+            var encodingWithLongestPreamble = encodingsWithPreambles.FirstOrDefault();
+            maxPreambleLength = encodingWithLongestPreamble?.GetPreamble().Length ?? 0;
         }
 
         /// <summary>

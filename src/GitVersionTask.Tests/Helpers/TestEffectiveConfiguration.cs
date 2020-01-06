@@ -1,10 +1,12 @@
-namespace GitVersionCore.Tests
-{
-    using GitVersion;
-    using GitVersion.VersionFilters;
-    using System.Collections.Generic;
-    using System.Linq;
+using System.Collections.Generic;
+using System.Linq;
+using GitVersion.Configuration;
+using GitVersion.VersionFilters;
+using GitVersion.VersioningModes;
+using GitVersion.Extensions;
 
+namespace GitVersion.MSBuildTask.Tests.Helpers
+{
     public class TestEffectiveConfiguration : EffectiveConfiguration
     {
         public TestEffectiveConfiguration(

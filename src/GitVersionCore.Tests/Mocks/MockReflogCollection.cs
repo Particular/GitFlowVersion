@@ -2,52 +2,49 @@ using System.Collections;
 using System.Collections.Generic;
 using LibGit2Sharp;
 
-public class MockReflogCollection : ReflogCollection, ICollection<Commit>
+namespace GitVersionCore.Tests.Mocks
 {
-    public List<Commit> Commits = new List<Commit>();
-
-    public new IEnumerator<Commit> GetEnumerator()
+    public class MockReflogCollection : ReflogCollection, ICollection<Commit>
     {
-        return Commits.GetEnumerator();
-    }
+        public List<Commit> Commits = new List<Commit>();
 
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
+        public new IEnumerator<Commit> GetEnumerator()
+        {
+            return Commits.GetEnumerator();
+        }
 
-    public void Add(Commit item)
-    {
-        Commits.Add(item);
-    }
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
 
-    public void Clear()
-    {
-        Commits.Clear();
-    }
+        public void Add(Commit item)
+        {
+            Commits.Add(item);
+        }
 
-    public bool Contains(Commit item)
-    {
-        return Commits.Contains(item);
-    }
+        public void Clear()
+        {
+            Commits.Clear();
+        }
 
-    public void CopyTo(Commit[] array, int arrayIndex)
-    {
-        Commits.CopyTo(array, arrayIndex);
-    }
+        public bool Contains(Commit item)
+        {
+            return Commits.Contains(item);
+        }
 
-    public bool Remove(Commit item)
-    {
-        return Commits.Remove(item);
-    }
+        public void CopyTo(Commit[] array, int arrayIndex)
+        {
+            Commits.CopyTo(array, arrayIndex);
+        }
 
-    public int Count
-    {
-        get { return Commits.Count; }
-    }
+        public bool Remove(Commit item)
+        {
+            return Commits.Remove(item);
+        }
 
-    public bool IsReadOnly
-    {
-        get { return false; }
+        public int Count => Commits.Count;
+
+        public bool IsReadOnly => false;
     }
 }

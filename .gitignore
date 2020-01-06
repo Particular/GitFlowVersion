@@ -85,7 +85,7 @@ _NCrunch_GitVersion
 GitVersion.sln.ide/
 .vs/
 Packages/
-build/
+build/*
 site/
 /TestResult.xml
 
@@ -103,10 +103,6 @@ site/
 
 .vscode
 
-src/GitVersionTfsTask/node_modules/
-src/GitVersionTfsTask/*.d.ts
-src/GitVersionTfsTask/*.js
-
 ####################
 # Cake
 ####################
@@ -118,15 +114,18 @@ GitVersion.CommandLine/*/
 releaseArtifacts
 /ILMergeTemp
 .dotnet
-.cake
 artifacts
-/src/Docker/**/content
-/src/GitVersionTfsTask/GitVersionTask
-!src/GitVersionTfsTask/GitVersionTask/task.json
-/src/GitVersionTfsTask/GitVersionNetCoreTask
-!src/GitVersionTfsTask/GitVersionNetCoreTask/task.json
-/src/GitVersionTfsTask/*.vsix
-/src/GitVersionRubyGem/*.gem
-/src/GitVersionRubyGem/bin/lib
-/src/GitVersionRubyGem/bin/GitVersion.exe
-/src/GitVersionRubyGem/bin/LibGit2Sharp.dll.config
+src/Docker/**/content
+
+src/GitVersionRubyGem/*.gem
+src/GitVersionRubyGem/bin/lib
+src/GitVersionRubyGem/bin/GitVersion.exe
+src/GitVersionRubyGem/bin/LibGit2Sharp.dll.config
+
+!**/*.cake
+.DS_Store
+
+# Wyam
+config.wyam.dll
+config.wyam.hash
+config.wyam.packages.xml

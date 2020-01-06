@@ -1,18 +1,21 @@
 using System.Collections.Generic;
 using GitTools.Testing;
 using GitVersion;
-using GitVersionCore.Tests;
 using LibGit2Sharp;
 using NUnit.Framework;
+using GitVersion.Configuration;
+using GitVersion.VersioningModes;
+using GitVersion.Extensions;
 
-[TestFixture]
-public class FeatureBranchScenarios : TestBase
+namespace GitVersionCore.Tests.IntegrationTests
 {
-    [Test]
-    public void ShouldInheritIncrementCorrectlyWithMultiplePossibleParentsAndWeirdlyNamedDevelopBranch()
+    [TestFixture]
+    public class FeatureBranchScenarios : TestBase
     {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void ShouldInheritIncrementCorrectlyWithMultiplePossibleParentsAndWeirdlyNamedDevelopBranch()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeATaggedCommit("1.0.0");
             fixture.Repository.CreateBranch("development");
             Commands.Checkout(fixture.Repository, "development");
@@ -33,30 +36,28 @@ public class FeatureBranchScenarios : TestBase
 
             fixture.AssertFullSemver("1.1.0-JIRA-124.1+2");
         }
-    }
 
-    [Test]
-    public void BranchCreatedAfterFastForwardMergeShouldInheritCorrectly()
-    {
-        var config = new Config
+        [Test]
+        public void BranchCreatedAfterFastForwardMergeShouldInheritCorrectly()
         {
-            Branches =
+            var config = new Config
             {
+                Branches =
                 {
-                    "unstable",
-                    new BranchConfig
                     {
-                        Increment = IncrementStrategy.Minor,
-                        Regex = "unstable",
-                        SourceBranches = new List<string>(),
-                        IsSourceBranchFor = new [] { "feature" }
+                        "unstable",
+                        new BranchConfig
+                        {
+                            Increment = IncrementStrategy.Minor,
+                            Regex = "unstable",
+                            SourceBranches = new List<string>(),
+                            IsSourceBranchFor = new [] { "feature" }
+                        }
                     }
                 }
-            }
-        };
+            };
 
-        using (var fixture = new EmptyRepositoryFixture())
-        {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeATaggedCommit("1.0.0");
             fixture.Repository.CreateBranch("unstable");
             Commands.Checkout(fixture.Repository, "unstable");
@@ -77,13 +78,11 @@ public class FeatureBranchScenarios : TestBase
 
             fixture.AssertFullSemver(config, "1.1.0-JIRA-124.1+2");
         }
-    }
 
-    [Test]
-    public void ShouldNotUseNumberInFeatureBranchAsPreReleaseNumberOffDevelop()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void ShouldNotUseNumberInFeatureBranchAsPreReleaseNumberOffDevelop()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeATaggedCommit("1.0.0");
             fixture.Repository.CreateBranch("develop");
             Commands.Checkout(fixture.Repository, "develop");
@@ -93,13 +92,11 @@ public class FeatureBranchScenarios : TestBase
 
             fixture.AssertFullSemver("1.1.0-JIRA-123.1+5");
         }
-    }
 
-    [Test]
-    public void ShouldNotUseNumberInFeatureBranchAsPreReleaseNumberOffMaster()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void ShouldNotUseNumberInFeatureBranchAsPreReleaseNumberOffMaster()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeATaggedCommit("1.0.0");
             fixture.Repository.CreateBranch("feature/JIRA-123");
             Commands.Checkout(fixture.Repository, "feature/JIRA-123");
@@ -107,13 +104,11 @@ public class FeatureBranchScenarios : TestBase
 
             fixture.AssertFullSemver("1.0.1-JIRA-123.1+5");
         }
-    }
 
-    [Test]
-    public void TestFeatureBranch()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void TestFeatureBranch()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeATaggedCommit("1.0.0");
             fixture.Repository.CreateBranch("feature-test");
             Commands.Checkout(fixture.Repository, "feature-test");
@@ -121,13 +116,11 @@ public class FeatureBranchScenarios : TestBase
 
             fixture.AssertFullSemver("1.0.1-test.1+5");
         }
-    }
 
-    [Test]
-    public void TestFeaturesBranch()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void TestFeaturesBranch()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeATaggedCommit("1.0.0");
             fixture.Repository.CreateBranch("features/test");
             Commands.Checkout(fixture.Repository, "features/test");
@@ -135,13 +128,11 @@ public class FeatureBranchScenarios : TestBase
 
             fixture.AssertFullSemver("1.0.1-test.1+5");
         }
-    }
 
-    [Test]
-    public void WhenTwoFeatureBranchPointToTheSameCommit()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void WhenTwoFeatureBranchPointToTheSameCommit()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit();
             fixture.Repository.CreateBranch("develop");
             Commands.Checkout(fixture.Repository, "develop");
@@ -153,13 +144,11 @@ public class FeatureBranchScenarios : TestBase
 
             fixture.AssertFullSemver("0.1.0-feature2.1+1");
         }
-    }
 
-    [Test]
-    public void ShouldBePossibleToMergeDevelopForALongRunningBranchWhereDevelopAndMasterAreEqual()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void ShouldBePossibleToMergeDevelopForALongRunningBranchWhereDevelopAndMasterAreEqual()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeATaggedCommit("v1.0.0");
 
             fixture.Repository.CreateBranch("develop");
@@ -182,22 +171,20 @@ public class FeatureBranchScenarios : TestBase
             var configuration = new Config { VersioningMode = VersioningMode.ContinuousDeployment };
             fixture.AssertFullSemver(configuration, "1.2.0-longrunning.2");
         }
-    }
 
-    [Test]
-    public void CanUseBranchNameOffAReleaseBranch()
-    {
-        var config = new Config
+        [Test]
+        public void CanUseBranchNameOffAReleaseBranch()
         {
-            Branches =
+            var config = new Config
             {
-                { "release", new BranchConfig { Tag = "build" } },
-                { "feature", new BranchConfig { Tag = "useBranchName" } }
-            }
-        };
+                Branches =
+                {
+                    { "release", new BranchConfig { Tag = "build" } },
+                    { "feature", new BranchConfig { Tag = "useBranchName" } }
+                }
+            };
 
-        using (var fixture = new EmptyRepositoryFixture())
-        {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.MakeACommit();
             fixture.BranchTo("release/0.3.0");
             fixture.MakeATaggedCommit("v0.3.0-build.1");
@@ -207,23 +194,21 @@ public class FeatureBranchScenarios : TestBase
 
             fixture.AssertFullSemver(config, "0.3.0-PROJ-1.1+2");
         }
-    }
 
-    [TestCase("alpha", "JIRA-123", "alpha")]
-    [TestCase("useBranchName", "JIRA-123", "JIRA-123")]
-    [TestCase("alpha.{BranchName}", "JIRA-123", "alpha.JIRA-123")]
-    public void ShouldUseConfiguredTag(string tag, string featureName, string preReleaseTagName)
-    {
-        var config = new Config
+        [TestCase("alpha", "JIRA-123", "alpha")]
+        [TestCase("useBranchName", "JIRA-123", "JIRA-123")]
+        [TestCase("alpha.{BranchName}", "JIRA-123", "alpha.JIRA-123")]
+        public void ShouldUseConfiguredTag(string tag, string featureName, string preReleaseTagName)
         {
-            Branches =
+            var config = new Config
             {
-                { "feature", new BranchConfig { Tag = tag } }
-            }
-        };
+                Branches =
+                {
+                    { "feature", new BranchConfig { Tag = tag } }
+                }
+            };
 
-        using (var fixture = new EmptyRepositoryFixture())
-        {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeATaggedCommit("1.0.0");
             var featureBranchName = $"feature/{featureName}";
             fixture.Repository.CreateBranch(featureBranchName);
@@ -233,13 +218,11 @@ public class FeatureBranchScenarios : TestBase
             var expectedFullSemVer = $"1.0.1-{preReleaseTagName}.1+5";
             fixture.AssertFullSemver(config, expectedFullSemVer);
         }
-    }
 
-    [Test]
-    public void BranchCreatedAfterFinishReleaseShouldInheritAndIncrementFromLastMasterCommitTag()
-    {
-        using (var fixture = new BaseGitFlowRepositoryFixture("0.1.0"))
+        [Test]
+        public void BranchCreatedAfterFinishReleaseShouldInheritAndIncrementFromLastMasterCommitTag()
         {
+            using var fixture = new BaseGitFlowRepositoryFixture("0.1.0");
             //validate current version
             fixture.AssertFullSemver("0.2.0-alpha.1");
             fixture.Repository.CreateBranch("release/0.2.0");
@@ -271,13 +254,11 @@ public class FeatureBranchScenarios : TestBase
             //I'm not entirely sure what the + value should be but I know the semvar major/minor/patch should be 0.3.0
             fixture.AssertFullSemver("0.3.0-TEST-1.1+2");
         }
-    }
 
-    [Test]
-    public void ShouldPickUpVersionFromDevelopAfterReleaseBranchCreated()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void ShouldPickUpVersionFromDevelopAfterReleaseBranchCreated()
         {
+            using var fixture = new EmptyRepositoryFixture();
             // Create develop and release branches
             fixture.MakeACommit();
             fixture.BranchTo("develop");
@@ -292,13 +273,11 @@ public class FeatureBranchScenarios : TestBase
             fixture.BranchTo("feature/test");
             fixture.AssertFullSemver("1.1.0-test.1+1");
         }
-    }
 
-    [Test]
-    public void ShouldPickUpVersionFromDevelopAfterReleaseBranchMergedBack()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void ShouldPickUpVersionFromDevelopAfterReleaseBranchMergedBack()
         {
+            using var fixture = new EmptyRepositoryFixture();
             // Create develop and release branches
             fixture.MakeACommit();
             fixture.BranchTo("develop");
@@ -315,126 +294,7 @@ public class FeatureBranchScenarios : TestBase
             fixture.BranchTo("feature/test");
             fixture.AssertFullSemver("1.1.0-test.1+2");
         }
-    }
 
-    public class WhenMasterMarkedAsIsDevelop
-    {
-        [Test]
-        public void ShouldPickUpVersionFromMasterAfterReleaseBranchCreated()
-        {
-            var config = new Config
-            {
-                Branches = new Dictionary<string, BranchConfig>
-                {
-                    {
-                        "master", new BranchConfig()
-                        {
-                            TracksReleaseBranches = true,
-                            Regex = "master"
-                        }
-                    }
-                }
-            };
-
-            using (var fixture = new EmptyRepositoryFixture())
-            {
-                // Create release branch
-                fixture.MakeACommit();
-                fixture.BranchTo("release/1.0");
-                fixture.MakeACommit();
-                fixture.Checkout("master");
-                fixture.MakeACommit();
-                fixture.AssertFullSemver(config, "1.0.1+1");
-
-                // create a feature branch from master and verify the version
-                fixture.BranchTo("feature/test");
-                fixture.AssertFullSemver(config, "1.0.1-test.1+1");
-            }
-        }
-
-        [Test]
-        public void ShouldPickUpVersionFromMasterAfterReleaseBranchMergedBack()
-        {
-            var config = new Config
-            {
-                Branches = new Dictionary<string, BranchConfig>
-                {
-                    {
-                        "master", new BranchConfig()
-                        {
-                            TracksReleaseBranches = true,
-                            Regex = "master"
-                        }
-                    }
-                }
-            };
-
-            using (var fixture = new EmptyRepositoryFixture())
-            {
-                // Create release branch
-                fixture.MakeACommit();
-                fixture.BranchTo("release/1.0");
-                fixture.MakeACommit();
-
-                // merge release into master
-                fixture.Checkout("master");
-                fixture.MergeNoFF("release/1.0");
-                fixture.AssertFullSemver(config, "1.0.1+2");
-
-                // create a feature branch from master and verify the version
-                fixture.BranchTo("feature/test");
-                fixture.AssertFullSemver(config, "1.0.1-test.1+2");
-            }
-        }
-    }
-
-    public class WhenFeatureBranchHasNoConfig
-    {
-        [Test]
-        public void ShouldPickUpVersionFromMasterAfterReleaseBranchCreated()
-        {
-            using (var fixture = new EmptyRepositoryFixture())
-            {
-                // Create develop and release branches
-                fixture.MakeACommit();
-                fixture.BranchTo("develop");
-                fixture.MakeACommit();
-                fixture.BranchTo("release/1.0");
-                fixture.MakeACommit();
-                fixture.Checkout("develop");
-                fixture.MakeACommit();
-                fixture.AssertFullSemver("1.1.0-alpha.1");
-
-                // create a misnamed feature branch (i.e. it uses the default config) from develop and verify the version
-                fixture.BranchTo("misnamed");
-                fixture.AssertFullSemver("1.1.0-misnamed.1+1");
-            }
-        }
-
-        [Test]
-        public void ShouldPickUpVersionFromDevelopAfterReleaseBranchMergedBack()
-        {
-            using (var fixture = new EmptyRepositoryFixture())
-            {
-                // Create develop and release branches
-                fixture.MakeACommit();
-                fixture.BranchTo("develop");
-                fixture.MakeACommit();
-                fixture.BranchTo("release/1.0");
-                fixture.MakeACommit();
-
-                // merge release into develop
-                fixture.Checkout("develop");
-                fixture.MergeNoFF("release/1.0");
-                fixture.AssertFullSemver("1.1.0-alpha.2");
-
-                // create a misnamed feature branch (i.e. it uses the default config) from develop and verify the version
-                fixture.BranchTo("misnamed");
-                fixture.AssertFullSemver("1.1.0-misnamed.1+2");
-            }
-        }
-
-        // ReSharper disable once MemberHidesStaticFromOuterClass
         public class WhenMasterMarkedAsIsDevelop
         {
             [Test]
@@ -454,20 +314,18 @@ public class FeatureBranchScenarios : TestBase
                     }
                 };
 
-                using (var fixture = new EmptyRepositoryFixture())
-                {
-                    // Create release branch
-                    fixture.MakeACommit();
-                    fixture.BranchTo("release/1.0");
-                    fixture.MakeACommit();
-                    fixture.Checkout("master");
-                    fixture.MakeACommit();
-                    fixture.AssertFullSemver(config, "1.0.1+1");
+                using var fixture = new EmptyRepositoryFixture();
+                // Create release branch
+                fixture.MakeACommit();
+                fixture.BranchTo("release/1.0");
+                fixture.MakeACommit();
+                fixture.Checkout("master");
+                fixture.MakeACommit();
+                fixture.AssertFullSemver(config, "1.0.1+1");
 
-                    // create a misnamed feature branch (i.e. it uses the default config) from master and verify the version
-                    fixture.BranchTo("misnamed");
-                    fixture.AssertFullSemver(config, "1.0.1-misnamed.1+1");
-                }
+                // create a feature branch from master and verify the version
+                fixture.BranchTo("feature/test");
+                fixture.AssertFullSemver(config, "1.0.1-test.1+1");
             }
 
             [Test]
@@ -487,8 +345,117 @@ public class FeatureBranchScenarios : TestBase
                     }
                 };
 
-                using (var fixture = new EmptyRepositoryFixture())
+                using var fixture = new EmptyRepositoryFixture();
+                // Create release branch
+                fixture.MakeACommit();
+                fixture.BranchTo("release/1.0");
+                fixture.MakeACommit();
+
+                // merge release into master
+                fixture.Checkout("master");
+                fixture.MergeNoFF("release/1.0");
+                fixture.AssertFullSemver(config, "1.0.1+2");
+
+                // create a feature branch from master and verify the version
+                fixture.BranchTo("feature/test");
+                fixture.AssertFullSemver(config, "1.0.1-test.1+2");
+            }
+        }
+
+        public class WhenFeatureBranchHasNoConfig
+        {
+            [Test]
+            public void ShouldPickUpVersionFromMasterAfterReleaseBranchCreated()
+            {
+                using var fixture = new EmptyRepositoryFixture();
+                // Create develop and release branches
+                fixture.MakeACommit();
+                fixture.BranchTo("develop");
+                fixture.MakeACommit();
+                fixture.BranchTo("release/1.0");
+                fixture.MakeACommit();
+                fixture.Checkout("develop");
+                fixture.MakeACommit();
+                fixture.AssertFullSemver("1.1.0-alpha.1");
+
+                // create a misnamed feature branch (i.e. it uses the default config) from develop and verify the version
+                fixture.BranchTo("misnamed");
+                fixture.AssertFullSemver("1.1.0-misnamed.1+1");
+            }
+
+            [Test]
+            public void ShouldPickUpVersionFromDevelopAfterReleaseBranchMergedBack()
+            {
+                using var fixture = new EmptyRepositoryFixture();
+                // Create develop and release branches
+                fixture.MakeACommit();
+                fixture.BranchTo("develop");
+                fixture.MakeACommit();
+                fixture.BranchTo("release/1.0");
+                fixture.MakeACommit();
+
+                // merge release into develop
+                fixture.Checkout("develop");
+                fixture.MergeNoFF("release/1.0");
+                fixture.AssertFullSemver("1.1.0-alpha.2");
+
+                // create a misnamed feature branch (i.e. it uses the default config) from develop and verify the version
+                fixture.BranchTo("misnamed");
+                fixture.AssertFullSemver("1.1.0-misnamed.1+2");
+            }
+
+            // ReSharper disable once MemberHidesStaticFromOuterClass
+            public class WhenMasterMarkedAsIsDevelop
+            {
+                [Test]
+                public void ShouldPickUpVersionFromMasterAfterReleaseBranchCreated()
                 {
+                    var config = new Config
+                    {
+                        Branches = new Dictionary<string, BranchConfig>
+                        {
+                            {
+                                "master", new BranchConfig()
+                                {
+                                    TracksReleaseBranches = true,
+                                    Regex = "master"
+                                }
+                            }
+                        }
+                    };
+
+                    using var fixture = new EmptyRepositoryFixture();
+                    // Create release branch
+                    fixture.MakeACommit();
+                    fixture.BranchTo("release/1.0");
+                    fixture.MakeACommit();
+                    fixture.Checkout("master");
+                    fixture.MakeACommit();
+                    fixture.AssertFullSemver(config, "1.0.1+1");
+
+                    // create a misnamed feature branch (i.e. it uses the default config) from master and verify the version
+                    fixture.BranchTo("misnamed");
+                    fixture.AssertFullSemver(config, "1.0.1-misnamed.1+1");
+                }
+
+                [Test]
+                public void ShouldPickUpVersionFromMasterAfterReleaseBranchMergedBack()
+                {
+                    var config = new Config
+                    {
+                        Branches = new Dictionary<string, BranchConfig>
+                        {
+                            {
+                                "master", new BranchConfig()
+                                {
+                                    TracksReleaseBranches = true,
+                                    Regex = "master"
+                                }
+                            }
+                        }
+                    };
+
+                    using var fixture = new EmptyRepositoryFixture();
                     // Create release branch
                     fixture.MakeACommit();
                     fixture.BranchTo("release/1.0");
@@ -505,15 +472,14 @@ public class FeatureBranchScenarios : TestBase
                 }
             }
         }
-    }
 
-    [Test]
-    public void PickUpVersionFromMasterMarkedWithIsTracksReleaseBranches()
-    {
-        var config = new Config
+        [Test]
+        public void PickUpVersionFromMasterMarkedWithIsTracksReleaseBranches()
         {
-            VersioningMode = VersioningMode.ContinuousDelivery,
-            Branches = new Dictionary<string, BranchConfig>
+            var config = new Config
+            {
+                VersioningMode = VersioningMode.ContinuousDelivery,
+                Branches = new Dictionary<string, BranchConfig>
                 {
                     {
                         "master", new BranchConfig()
@@ -530,10 +496,9 @@ public class FeatureBranchScenarios : TestBase
                         }
                     }
                 }
-        };
+            };
 
-        using (var fixture = new EmptyRepositoryFixture())
-        {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.MakeACommit();
 
             // create a release branch and tag a release
@@ -551,38 +516,36 @@ public class FeatureBranchScenarios : TestBase
             fixture.BranchTo("MyFeatureD");
             fixture.AssertFullSemver(config, "0.10.1-MyFeatureD.1+1");
         }
-    }
 
-    [Test]
-    public void ShouldHaveAGreaterSemVerAfterDevelopIsMergedIntoFeature()
-    {
-        var config = new Config()
+        [Test]
+        public void ShouldHaveAGreaterSemVerAfterDevelopIsMergedIntoFeature()
         {
-            VersioningMode = VersioningMode.ContinuousDeployment,
-            AssemblyVersioningScheme = AssemblyVersioningScheme.Major,
-            AssemblyFileVersioningFormat = "{MajorMinorPatch}.{env:WeightedPreReleaseNumber ?? 0}",
-            LegacySemVerPadding = 4,
-            BuildMetaDataPadding = 4,
-            CommitsSinceVersionSourcePadding = 4,
-            CommitMessageIncrementing = CommitMessageIncrementMode.Disabled,
-            Branches = new Dictionary<string, BranchConfig>
+            var config = new Config()
             {
+                VersioningMode = VersioningMode.ContinuousDeployment,
+                AssemblyVersioningScheme = AssemblyVersioningScheme.Major,
+                AssemblyFileVersioningFormat = "{MajorMinorPatch}.{env:WeightedPreReleaseNumber ?? 0}",
+                LegacySemVerPadding = 4,
+                BuildMetaDataPadding = 4,
+                CommitsSinceVersionSourcePadding = 4,
+                CommitMessageIncrementing = CommitMessageIncrementMode.Disabled,
+                Branches = new Dictionary<string, BranchConfig>
                 {
-                    "develop", new BranchConfig()
                     {
-                        PreventIncrementOfMergedBranchVersion = true
-                    }
-                },
-                {
-                    "feature", new BranchConfig()
+                        "develop", new BranchConfig()
+                        {
+                            PreventIncrementOfMergedBranchVersion = true
+                        }
+                    },
                     {
-                        Tag = "feat-{BranchName}"
+                        "feature", new BranchConfig()
+                        {
+                            Tag = "feat-{BranchName}"
+                        }
                     }
                 }
-            }
-        };
-        using (var fixture = new EmptyRepositoryFixture())
-        {
+            };
+            using var fixture = new EmptyRepositoryFixture();
             fixture.MakeACommit();
             fixture.BranchTo("develop");
             fixture.MakeACommit();

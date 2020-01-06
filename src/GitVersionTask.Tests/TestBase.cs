@@ -1,9 +1,7 @@
-﻿public class TestBase
+namespace GitVersion.MSBuildTask.Tests
 {
-    static TestBase()
+    public class TestBase
     {
-        ModuleInitializer.Initialize();
     }
-
 }
 

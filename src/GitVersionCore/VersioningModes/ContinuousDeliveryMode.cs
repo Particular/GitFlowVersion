@@ -1,9 +1,10 @@
-﻿namespace GitVersion.VersioningModes
-{
-    using System.Collections.Generic;
-    using System.Linq;
-    using LibGit2Sharp;
+using System.Collections.Generic;
+using System.Linq;
+using LibGit2Sharp;
+using GitVersion.Extensions;
 
+namespace GitVersion.VersioningModes
+{
     public class ContinuousDeliveryMode : VersioningModeBase
     {
         public override SemanticVersionPreReleaseTag GetPreReleaseTag(GitVersionContext context, List<Tag> possibleCommits, int numberOfCommits)
@@ -11,7 +12,7 @@
             return RetrieveMostRecentOptionalTagVersion(context, possibleCommits) ?? context.Configuration.Tag + ".1";
         }
 
-        static SemanticVersionPreReleaseTag RetrieveMostRecentOptionalTagVersion(GitVersionContext context, List<Tag> applicableTagsInDescendingOrder)
+        private static SemanticVersionPreReleaseTag RetrieveMostRecentOptionalTagVersion(GitVersionContext context, List<Tag> applicableTagsInDescendingOrder)
         {
             if (applicableTagsInDescendingOrder.Any())
             {

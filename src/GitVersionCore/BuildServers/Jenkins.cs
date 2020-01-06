@@ -1,24 +1,20 @@
-﻿namespace GitVersion
-{
-    using System;
-    using System.IO;
+using System;
+using System.IO;
+using GitVersion.OutputFormatters;
+using GitVersion.OutputVariables;
+using GitVersion.Logging;
 
+namespace GitVersion.BuildServers
+{
     public class Jenkins : BuildServerBase
     {
-        string _file;
+        public const string EnvironmentVariableName = "JENKINS_URL";
+        private readonly string file;
+        protected override string EnvironmentVariable { get; } = EnvironmentVariableName;
 
-        public Jenkins() : this("gitversion.properties")
+        public Jenkins(IEnvironment environment, ILog log, string propertiesFileName = "gitversion.properties") : base(environment, log)
         {
-        }
-
-        public Jenkins(string propertiesFileName)
-        {
-            _file = propertiesFileName;
-        }
-
-        public override bool CanApplyToCurrentContext()
-        {
-            return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JENKINS_URL"));
+            file = propertiesFileName;
         }
 
         public override string GenerateSetVersionMessage(VersionVariables variables)
@@ -30,7 +26,7 @@
         {
             return new[]
             {
-                string.Format("GitVersion_{0}={1}", name, value)
+                $"GitVersion_{name}={value}"
             };
         }
 
@@ -38,7 +34,7 @@
         {
             return IsPipelineAsCode()
                 ? Environment.GetEnvironmentVariable("BRANCH_NAME")
-                : (Environment.GetEnvironmentVariable("GIT_LOCAL_BRANCH") ?? Environment.GetEnvironmentVariable("GIT_BRANCH"));
+                : Environment.GetEnvironmentVariable("GIT_LOCAL_BRANCH") ?? Environment.GetEnvironmentVariable("GIT_BRANCH");
         }
 
         private bool IsPipelineAsCode()
@@ -46,10 +42,7 @@
             return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("BRANCH_NAME"));
         }
 
-        public override bool PreventFetch()
-        {
-            return true;
-        }
+        public override bool PreventFetch() => true;
 
         /// <summary>
         /// When Jenkins uses pipeline-as-code, it creates two remotes: "origin" and "origin1".
@@ -64,13 +57,13 @@
         public override void WriteIntegration(Action<string> writer, VersionVariables variables)
         {
             base.WriteIntegration(writer, variables);
-            writer(string.Format("Outputting variables to '{0}' ... ", _file));
+            writer($"Outputting variables to '{file}' ... ");
             WriteVariablesFile(variables);
         }
 
-        void WriteVariablesFile(VersionVariables variables)
+        private void WriteVariablesFile(VersionVariables variables)
         {
-            File.WriteAllLines(_file, BuildOutputFormatter.GenerateBuildLogOutput(this, variables));
+            File.WriteAllLines(file, BuildOutputFormatter.GenerateBuildLogOutput(this, variables));
         }
     }
 }

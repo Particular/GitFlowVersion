@@ -1,18 +1,19 @@
-﻿using System.IO;
+using System.IO;
 using GitTools.Testing;
 using NUnit.Framework;
 using Shouldly;
 
-[TestFixture]
-public class MsBuildProjectArgTest
+namespace GitVersionExe.Tests
 {
-    [Test]
-    public void RunsMsBuildProvideViaCommandLineArg()
+    [TestFixture]
+    public class MsBuildProjectArgTest
     {
-        const string TaggedVersion = "1.2.3";
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void RunsMsBuildProvideViaCommandLineArg()
         {
-            fixture.Repository.MakeATaggedCommit(TaggedVersion);
+            const string taggedVersion = "1.2.3";
+            using var fixture = new EmptyRepositoryFixture();
+            fixture.Repository.MakeATaggedCommit(taggedVersion);
 
             var buildFile = Path.Combine(fixture.RepositoryPath, "RunsMsBuildProvideViaCommandLineArg.proj");
             File.Delete(buildFile);

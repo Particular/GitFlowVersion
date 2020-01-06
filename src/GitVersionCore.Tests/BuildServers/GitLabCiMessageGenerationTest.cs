@@ -1,78 +1,100 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using GitVersion;
-using GitVersionCore.Tests;
+using System.Reflection;
 using NUnit.Framework;
 using Shouldly;
-using System.Reflection;
+using GitVersion.BuildServers;
+using GitVersion;
+using GitVersion.Logging;
+using GitVersion.OutputVariables;
+using GitVersion.VersionCalculation;
 
-[TestFixture]
-public class GitLabCiMessageGenerationTests : TestBase
+namespace GitVersionCore.Tests.BuildServers
 {
-    [Test]
-    public void GenerateSetVersionMessageReturnsVersionAsIs_AlthoughThisIsNotUsedByJenkins()
+    [TestFixture]
+    public class GitLabCiMessageGenerationTests : TestBase
     {
-        var j = new GitLabCi();
-        var vars = new TestableVersionVariables(fullSemVer: "0.0.0-Beta4.7");
-        j.GenerateSetVersionMessage(vars).ShouldBe("0.0.0-Beta4.7");
-    }
+        private IEnvironment environment;
+        private ILog log;
+        private IVariableProvider variableProvider;
 
-    [Test]
-    public void GenerateMessageTest()
-    {
-        var j = new GitLabCi();
-        var generatedParameterMessages = j.GenerateSetParameterMessage("name", "value");
-        generatedParameterMessages.Length.ShouldBe(1);
-        generatedParameterMessages[0].ShouldBe("GitVersion_name=value");
-    }
-
-    [Test]
-    public void WriteAllVariablesToTheTextWriter()
-    {
-        var assemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-        var f = Path.Combine(assemblyLocation, "this_file_should_be_deleted.properties");
-
-        try
+        [SetUp]
+        public void SetUp()
         {
-            AssertVariablesAreWrittenToFile(f);
+            environment = new TestEnvironment();
+            log = new NullLog();
+            var metaDataCalculator = new MetaDataCalculator();
+            var baseVersionCalculator = new BaseVersionCalculator(log, null);
+            var mainlineVersionCalculator = new MainlineVersionCalculator(log, metaDataCalculator);
+            var nextVersionCalculator = new NextVersionCalculator(log, metaDataCalculator, baseVersionCalculator, mainlineVersionCalculator);
+            variableProvider = new VariableProvider(nextVersionCalculator, new TestEnvironment());
         }
-        finally
+
+        [Test]
+        public void GenerateSetVersionMessageReturnsVersionAsIsAlthoughThisIsNotUsedByJenkins()
         {
-            File.Delete(f);
+            var j = new GitLabCi(environment, log);
+            var vars = new TestableVersionVariables(fullSemVer: "0.0.0-Beta4.7");
+            j.GenerateSetVersionMessage(vars).ShouldBe("0.0.0-Beta4.7");
         }
-    }
 
-    static void AssertVariablesAreWrittenToFile(string f)
-    {
-        var writes = new List<string>();
-        var semanticVersion = new SemanticVersion
+        [Test]
+        public void GenerateMessageTest()
         {
-            Major = 1,
-            Minor = 2,
-            Patch = 3,
-            PreReleaseTag = "beta1",
-            BuildMetaData = "5"
-        };
+            var j = new GitLabCi(environment, log);
+            var generatedParameterMessages = j.GenerateSetParameterMessage("name", "value");
+            generatedParameterMessages.Length.ShouldBe(1);
+            generatedParameterMessages[0].ShouldBe("GitVersion_name=value");
+        }
 
-        semanticVersion.BuildMetaData.CommitDate = DateTimeOffset.Parse("2014-03-06 23:59:59Z");
-        semanticVersion.BuildMetaData.Sha = "commitSha";
+        [Test]
+        public void WriteAllVariablesToTheTextWriter()
+        {
+            var assemblyLocation = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var f = Path.Combine(assemblyLocation, "jenkins_this_file_should_be_deleted.properties");
 
-        var config = new TestEffectiveConfiguration();
+            try
+            {
+                AssertVariablesAreWrittenToFile(f);
+            }
+            finally
+            {
+                File.Delete(f);
+            }
+        }
 
-        var variables = VariableProvider.GetVariablesFor(semanticVersion, config, false);
+        private void AssertVariablesAreWrittenToFile(string f)
+        {
+            var writes = new List<string>();
+            var semanticVersion = new SemanticVersion
+            {
+                Major = 1,
+                Minor = 2,
+                Patch = 3,
+                PreReleaseTag = "beta1",
+                BuildMetaData = "5"
+            };
 
-        var j = new GitLabCi(f);
+            semanticVersion.BuildMetaData.CommitDate = DateTimeOffset.Parse("2014-03-06 23:59:59Z");
+            semanticVersion.BuildMetaData.Sha = "commitSha";
 
-        j.WriteIntegration(writes.Add, variables);
+            var config = new TestEffectiveConfiguration();
 
-        writes[1].ShouldBe("1.2.3-beta.1+5");
+            var variables = variableProvider.GetVariablesFor(semanticVersion, config, false);
 
-        File.Exists(f).ShouldBe(true);
+            var j = new GitLabCi(environment, log, f);
 
-        var props = File.ReadAllText(f);
+            j.WriteIntegration(writes.Add, variables);
 
-        props.ShouldContain("GitVersion_Major=1");
-        props.ShouldContain("GitVersion_Minor=2");
+            writes[1].ShouldBe("1.2.3-beta.1+5");
+
+            File.Exists(f).ShouldBe(true);
+
+            var props = File.ReadAllText(f);
+
+            props.ShouldContain("GitVersion_Major=1");
+            props.ShouldContain("GitVersion_Minor=2");
+        }
     }
 }

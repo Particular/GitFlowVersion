@@ -1,23 +1,29 @@
+using System;
+using System.Reflection;
+
 namespace GitVersion
 {
-    using System;
-    using System.Reflection;
-
-    class HelpWriter
+    public class HelpWriter : IHelpWriter
     {
-        public static void Write()
+        private readonly IVersionWriter versionWriter;
+
+        public HelpWriter(IVersionWriter versionWriter)
+        {
+            this.versionWriter = versionWriter ?? throw new ArgumentNullException(nameof(versionWriter));
+        }
+
+        public void Write()
         {
             WriteTo(Console.WriteLine);
         }
 
-        public static void WriteTo(Action<string> writeAction)
+        public void WriteTo(Action<string> writeAction)
         {
-            string version = string.Empty;
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            VersionWriter.WriteTo(assembly, v => version = v);
+            var version = string.Empty;
+            var assembly = Assembly.GetExecutingAssembly();
+            versionWriter.WriteTo(assembly, v => version = v);
 
-
-            string message = "GitVersion " + version + @"
+            var message = "GitVersion " + version + @"
 Use convention to derive a SemVer product version from a GitFlow or GitHub based repository.
 
 GitVersion [path]
@@ -33,10 +39,12 @@ GitVersion [path]
     /showvariable   Used in conjuntion with /output json, will output just a particular variable. 
                     eg /output json /showvariable SemVer - will output `1.2.3+beta.4`
     /l              Path to logfile.
+    /config         Path to config file (defaults to GitVersion.yml)
     /showconfig     Outputs the effective GitVersion config (defaults + custom from GitVersion.yml) in yaml format
     /overrideconfig Overrides GitVersion config values inline (semicolon-separated key value pairs e.g. /overrideconfig tag-prefix=Foo)
                     Currently supported config overrides: tag-prefix
     /nocache        Bypasses the cache, result will not be written to the cache.
+    /nonormalize    Disables normalize step on a build server. 
 
  # AssemblyInfo updating
     /updateassemblyinfo
@@ -74,8 +82,6 @@ GitVersion [path]
 
 gitversion init     Configuration utility for gitversion
 ";
-
-
             writeAction(message);
         }
     }

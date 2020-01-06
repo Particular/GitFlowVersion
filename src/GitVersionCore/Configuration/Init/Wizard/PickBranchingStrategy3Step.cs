@@ -1,11 +1,11 @@
+using System.Collections.Generic;
+using GitVersion.Logging;
+
 namespace GitVersion.Configuration.Init.Wizard
 {
-    using System.Collections.Generic;
-    using GitVersion.Helpers;
-
     public class PickBranchingStrategy3Step : ConfigInitWizardStep
     {
-        public PickBranchingStrategy3Step(IConsole console, IFileSystem fileSystem) : base(console, fileSystem)
+        public PickBranchingStrategy3Step(IConsole console, IFileSystem fileSystem, ILog log, IConfigInitStepFactory stepFactory) : base(console, fileSystem, log, stepFactory)
         {
         }
 
@@ -27,7 +27,7 @@ namespace GitVersion.Configuration.Init.Wizard
                     return StepResult.InvalidResponseSelected();
             }
 
-            steps.Enqueue(new PickBranchingStrategyStep(Console, FileSystem));
+            steps.Enqueue(StepFactory.CreateStep<PickBranchingStrategyStep>());
             return StepResult.Ok();
         }
 
@@ -36,9 +36,6 @@ namespace GitVersion.Configuration.Init.Wizard
             return "Do you need to build nightlies or consume packages the CI build creates without releasing those versions? (y/n)";
         }
 
-        protected override string DefaultResult
-        {
-            get { return null; }
-        }
+        protected override string DefaultResult => null;
     }
 }

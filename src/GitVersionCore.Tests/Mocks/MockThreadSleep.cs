@@ -1,21 +1,24 @@
-﻿using System;
-using GitVersion.Helpers;
+using System;
 using System.Threading.Tasks;
+using GitVersion;
 
-public class MockThreadSleep : IThreadSleep
+namespace GitVersionCore.Tests.Mocks
 {
-    private Func<int, Task> Validator;
-
-    public MockThreadSleep(Func<int, Task> validator = null)
+    public class MockThreadSleep : IThreadSleep
     {
-        this.Validator = validator;
-    }
+        private readonly Func<int, Task> validator;
 
-    public async Task SleepAsync(int milliseconds)
-    {
-        if (Validator != null)
+        public MockThreadSleep(Func<int, Task> validator = null)
         {
-            await Validator(milliseconds);
+            this.validator = validator;
+        }
+
+        public async Task SleepAsync(int milliseconds)
+        {
+            if (validator != null)
+            {
+                await validator(milliseconds);
+            }
         }
     }
 }

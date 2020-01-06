@@ -1,8 +1,8 @@
+using GitVersion.OutputVariables;
+
 namespace GitVersionCore.Tests
 {
-    using GitVersion;
-
-    class TestableVersionVariables : VersionVariables
+    internal class TestableVersionVariables : VersionVariables
     {
         public TestableVersionVariables(
             string major = "", string minor = "", string patch = "", string buildMetaData = "", 

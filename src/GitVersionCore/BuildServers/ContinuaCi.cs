@@ -1,29 +1,31 @@
-﻿namespace GitVersion
-{
-    using System;
+using GitVersion.OutputVariables;
+using GitVersion.Logging;
 
+namespace GitVersion.BuildServers
+{
     public class ContinuaCi : BuildServerBase
     {
+        public ContinuaCi(IEnvironment environment, ILog log) : base(environment, log)
+        {
+        }
 
         public const string EnvironmentVariableName = "ContinuaCI.Version";
 
-        public override bool CanApplyToCurrentContext()
-        {
-            return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentVariableName));
-
-        }
+        protected override string EnvironmentVariable { get; } = EnvironmentVariableName;
 
         public override string[] GenerateSetParameterMessage(string name, string value)
         {
             return new[]
             {
-                string.Format("@@continua[setVariable name='GitVersion_{0}' value='{1}' skipIfNotDefined='true']", name, value)
+                $"@@continua[setVariable name='GitVersion_{name}' value='{value}' skipIfNotDefined='true']"
             };
         }
 
         public override string GenerateSetVersionMessage(VersionVariables variables)
         {
-            return string.Format("@@continua[setBuildVersion value='{0}']", variables.FullSemVer);
-        }    
+            return $"@@continua[setBuildVersion value='{variables.FullSemVer}']";
+        }
+
+        public override bool PreventFetch() => false;
     }
 }

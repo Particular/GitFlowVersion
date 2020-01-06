@@ -1,8 +1,9 @@
-namespace GitVersion
-{
-    using System;
+using System;
+using GitVersion.Logging;
 
-    class ConsoleAdapter : IConsole
+namespace GitVersion.Configuration
+{
+    internal class ConsoleAdapter : IConsole
     {
         public void WriteLine(string msg)
         {
@@ -29,22 +30,7 @@ namespace GitVersion
             var old = Console.ForegroundColor;
             Console.ForegroundColor = consoleColor;
 
-            return new DelegateDisposable(() => Console.ForegroundColor = old);
-        }
-
-        class DelegateDisposable : IDisposable
-        {
-            readonly Action dispose;
-
-            public DelegateDisposable(Action dispose)
-            {
-                this.dispose = dispose;
-            }
-
-            public void Dispose()
-            {
-                dispose();
-            }
+            return Disposable.Create(() => Console.ForegroundColor = old);
         }
     }
 }

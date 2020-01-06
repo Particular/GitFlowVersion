@@ -1,40 +1,44 @@
-﻿using LibGit2Sharp;
+using LibGit2Sharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using GitVersion.Configuration;
+using GitVersion.Logging;
+using GitVersion.Extensions;
 
 namespace GitVersion
 {
     public class GitRepoMetadataProvider
     {
-        private Dictionary<Branch, List<BranchCommit>> mergeBaseCommitsCache;
-        private Dictionary<Tuple<Branch, Branch>, MergeBaseData> mergeBaseCache;
-        private Dictionary<Branch, List<SemanticVersion>> semanticVersionTagsOnBranchCache;
-        private IRepository Repository { get; set; }
-        const string missingTipFormat = "{0} has no tip. Please see http://example.com/docs for information on how to fix this.";
-        private Config configuration;
+        private readonly Dictionary<Branch, List<BranchCommit>> mergeBaseCommitsCache;
+        private readonly Dictionary<Tuple<Branch, Branch>, MergeBaseData> mergeBaseCache;
+        private readonly Dictionary<Branch, List<SemanticVersion>> semanticVersionTagsOnBranchCache;
+        private IRepository Repository { get; }
+        private const string MissingTipFormat = "{0} has no tip. Please see http://example.com/docs for information on how to fix this.";
+        private readonly ILog log;
+        private readonly Config configuration;
 
-        public GitRepoMetadataProvider(IRepository repository, Config configuration)
+        public GitRepoMetadataProvider(IRepository repository, ILog log, Config configuration)
         {
             mergeBaseCache = new Dictionary<Tuple<Branch, Branch>, MergeBaseData>();
             mergeBaseCommitsCache = new Dictionary<Branch, List<BranchCommit>>();
             semanticVersionTagsOnBranchCache = new Dictionary<Branch, List<SemanticVersion>>();
             Repository = repository;
+            this.log = log;
             this.configuration = configuration;
         }
 
-        public static IEnumerable<Tuple<Tag, SemanticVersion>> GetValidVersionTags(IRepository repository, string tagPrefixRegex, DateTimeOffset? olderThan = null)
+        public IEnumerable<Tuple<Tag, SemanticVersion>> GetValidVersionTags(IRepository repository, string tagPrefixRegex, DateTimeOffset? olderThan = null)
         {
             var tags = new List<Tuple<Tag, SemanticVersion>>();
 
             foreach (var tag in repository.Tags)
             {
-                if (olderThan.HasValue && ((Commit)tag.PeeledTarget()).When() > olderThan.Value)
+                if (!(tag.PeeledTarget() is Commit commit) || (olderThan.HasValue && commit.When() > olderThan.Value))
                     continue;
 
-                SemanticVersion semver;
-                if (SemanticVersion.TryParse(tag.FriendlyName, tagPrefixRegex, out semver))
+                if (SemanticVersion.TryParse(tag.FriendlyName, tagPrefixRegex, out var semver))
                 {
                     tags.Add(Tuple.Create(tag, semver));
                 }
@@ -47,13 +51,13 @@ namespace GitVersion
         {
             if (semanticVersionTagsOnBranchCache.ContainsKey(branch))
             {
-                Logger.WriteDebug(string.Format("Cache hit for version tags on branch '{0}", branch.CanonicalName));
+                log.Debug($"Cache hit for version tags on branch '{branch.CanonicalName}");
                 return semanticVersionTagsOnBranchCache[branch];
             }
 
-            using (Logger.IndentLog(string.Format("Getting version tags from branch '{0}'.", branch.CanonicalName)))
+            using (log.IndentLog($"Getting version tags from branch '{branch.CanonicalName}'."))
             {
-                var tags = GetValidVersionTags(this.Repository, tagPrefixRegex);
+                var tags = GetValidVersionTags(Repository, tagPrefixRegex);
 
                 var versionTags = branch.Commits.SelectMany(c => tags.Where(t => c.Sha == t.Item1.Target.Sha).Select(t => t.Item2)).ToList();
 
@@ -67,13 +71,13 @@ namespace GitVersion
         {
             if (commit == null)
             {
-                throw new ArgumentNullException("commit");
+                throw new ArgumentNullException(nameof(commit));
             }
 
-            using (Logger.IndentLog(string.Format("Getting branches containing the commit '{0}'.", commit.Id)))
+            using (log.IndentLog($"Getting branches containing the commit '{commit.Id}'."))
             {
                 var directBranchHasBeenFound = false;
-                Logger.WriteInfo("Trying to find direct branches.");
+                log.Info("Trying to find direct branches.");
                 // TODO: It looks wasteful looping through the branches twice. Can't these loops be merged somehow? @asbjornu
                 foreach (var branch in branches)
                 {
@@ -83,7 +87,7 @@ namespace GitVersion
                     }
 
                     directBranchHasBeenFound = true;
-                    Logger.WriteInfo(string.Format("Direct branch found: '{0}'.", branch.FriendlyName));
+                    log.Info($"Direct branch found: '{branch.FriendlyName}'.");
                     yield return branch;
                 }
 
@@ -92,23 +96,23 @@ namespace GitVersion
                     yield break;
                 }
 
-                Logger.WriteInfo(string.Format("No direct branches found, searching through {0} branches.", onlyTrackedBranches ? "tracked" : "all"));
+                log.Info($"No direct branches found, searching through {(onlyTrackedBranches ? "tracked" : "all")} branches.");
                 foreach (var branch in branches.Where(b => onlyTrackedBranches && !b.IsTracking))
                 {
-                    Logger.WriteInfo(string.Format("Searching for commits reachable from '{0}'.", branch.FriendlyName));
+                    log.Info($"Searching for commits reachable from '{branch.FriendlyName}'.");
 
-                    var commits = this.Repository.Commits.QueryBy(new CommitFilter
+                    var commits = Repository.Commits.QueryBy(new CommitFilter
                     {
                         IncludeReachableFrom = branch
                     }).Where(c => c.Sha == commit.Sha);
 
                     if (!commits.Any())
                     {
-                        Logger.WriteInfo(string.Format("The branch '{0}' has no matching commits.", branch.FriendlyName));
+                        log.Info($"The branch '{branch.FriendlyName}' has no matching commits.");
                         continue;
                     }
 
-                    Logger.WriteInfo(string.Format("The branch '{0}' has a matching commit.", branch.FriendlyName));
+                    log.Info($"The branch '{branch.FriendlyName}' has a matching commit.");
                     yield return branch;
                 }
             }
@@ -123,11 +127,11 @@ namespace GitVersion
 
             if (mergeBaseCache.ContainsKey(key))
             {
-                Logger.WriteDebug($"Cache hit for merge base between '{branch.FriendlyName}' and '{otherBranch.FriendlyName}'.");
+                log.Debug($"Cache hit for merge base between '{branch.FriendlyName}' and '{otherBranch.FriendlyName}'.");
                 return mergeBaseCache[key].MergeBase;
             }
 
-            using (Logger.IndentLog($"Finding merge base between '{branch.FriendlyName}' and '{otherBranch.FriendlyName}'."))
+            using (log.IndentLog($"Finding merge base between '{branch.FriendlyName}' and '{otherBranch.FriendlyName}'."))
             {
                 // Otherbranch tip is a forward merge
                 var commitToFindCommonBase = otherBranch.Tip;
@@ -140,7 +144,7 @@ namespace GitVersion
                 var findMergeBase = Repository.ObjectDatabase.FindMergeBase(commit, commitToFindCommonBase);
                 if (findMergeBase != null)
                 {
-                    Logger.WriteInfo($"Found merge base of {findMergeBase.Sha}");
+                    log.Info($"Found merge base of {findMergeBase.Sha}");
                     // We do not want to include merge base commits which got forward merged into the other branch
                     Commit forwardMerge;
                     do
@@ -158,24 +162,24 @@ namespace GitVersion
                         {
                             // TODO Fix the logging up in this section
                             var second = forwardMerge.Parents.First();
-                            Logger.WriteDebug("Second " + second.Sha);
+                            log.Debug("Second " + second.Sha);
                             var mergeBase = Repository.ObjectDatabase.FindMergeBase(commit, second);
                             if (mergeBase == null)
                             {
-                                Logger.WriteWarning("Could not find mergbase for " + commit);
+                                log.Warning("Could not find mergbase for " + commit);
                             }
                             else
                             {
-                                Logger.WriteDebug("New Merge base " + mergeBase.Sha);
+                                log.Debug("New Merge base " + mergeBase.Sha);
                             }
                             if (mergeBase == findMergeBase)
                             {
-                                Logger.WriteDebug("Breaking");
+                                log.Debug("Breaking");
                                 break;
                             }
                             findMergeBase = mergeBase;
                             commitToFindCommonBase = second;
-                            Logger.WriteInfo($"Merge base was due to a forward merge, next merge base is {findMergeBase}");
+                            log.Info($"Merge base was due to a forward merge, next merge base is {findMergeBase}");
                         }
                     } while (forwardMerge != null);
                 }
@@ -183,7 +187,7 @@ namespace GitVersion
                 // Store in cache.
                 mergeBaseCache.Add(key, new MergeBaseData(branch, otherBranch, Repository, findMergeBase));
 
-                Logger.WriteInfo($"Merge base of {branch.FriendlyName}' and '{otherBranch.FriendlyName} is {findMergeBase}");
+                log.Info($"Merge base of {branch.FriendlyName}' and '{otherBranch.FriendlyName} is {findMergeBase}");
                 return findMergeBase;
             }
         }
@@ -196,14 +200,14 @@ namespace GitVersion
         {
             if (branch == null)
             {
-                throw new ArgumentNullException("branch");
+                throw new ArgumentNullException(nameof(branch));
             }
 
-            using (Logger.IndentLog(string.Format("Finding branch source of '{0}'", branch.FriendlyName)))
+            using (log.IndentLog($"Finding branch source of '{branch.FriendlyName}'"))
             {
                 if (branch.Tip == null)
                 {
-                    Logger.WriteWarning(string.Format(missingTipFormat, branch.FriendlyName));
+                    log.Warning(string.Format(MissingTipFormat, branch.FriendlyName));
                     return BranchCommit.Empty;
                 }
 
@@ -214,7 +218,7 @@ namespace GitVersion
                 if (possibleBranches.Count > 1)
                 {
                     var first = possibleBranches.First();
-                    Logger.WriteInfo($"Multiple source branches have been found, picking the first one ({first.Branch.FriendlyName}).\n" +
+                    log.Info($"Multiple source branches have been found, picking the first one ({first.Branch.FriendlyName}).\n" +
                         "This may result in incorrect commit counting.\nOptions were:\n " +
                         string.Join(", ", possibleBranches.Select(b => b.Branch.FriendlyName)));
                     return first;
@@ -224,13 +228,11 @@ namespace GitVersion
             }
         }
 
-        List<BranchCommit> GetMergeCommitsForBranch(Branch branch, Branch[] excludedBranches)
+        private List<BranchCommit> GetMergeCommitsForBranch(Branch branch, Branch[] excludedBranches)
         {
             if (mergeBaseCommitsCache.ContainsKey(branch))
             {
-                Logger.WriteDebug(string.Format(
-                    "Cache hit for getting merge commits for branch {0}.",
-                    branch.CanonicalName));
+                log.Debug($"Cache hit for getting merge commits for branch {branch.CanonicalName}.");
                 return mergeBaseCommitsCache[branch];
             }
 
@@ -251,7 +253,7 @@ namespace GitVersion
                 {
                     if (otherBranch.Tip == null)
                     {
-                        Logger.WriteWarning(string.Format(missingTipFormat, otherBranch.FriendlyName));
+                        log.Warning(string.Format(MissingTipFormat, otherBranch.FriendlyName));
                         return BranchCommit.Empty;
                     }
 
@@ -268,11 +270,11 @@ namespace GitVersion
 
         private class MergeBaseData
         {
-            public Branch Branch { get; private set; }
-            public Branch OtherBranch { get; private set; }
-            public IRepository Repository { get; private set; }
+            public Branch Branch { get; }
+            public Branch OtherBranch { get; }
+            public IRepository Repository { get; }
 
-            public Commit MergeBase { get; private set; }
+            public Commit MergeBase { get; }
 
             public MergeBaseData(Branch branch, Branch otherBranch, IRepository repository, Commit mergeBase)
             {

@@ -1,9 +1,10 @@
-﻿using System;
+using System;
 using GitVersion;
 using GitVersion.VersionCalculation.BaseVersionCalculators;
 using GitVersion.VersionFilters;
 using NUnit.Framework;
 using Shouldly;
+using GitVersionCore.Tests.Mocks;
 
 namespace GitVersionCore.Tests.VersionFilters
 {
@@ -22,8 +23,7 @@ namespace GitVersionCore.Tests.VersionFilters
             var commit = new MockCommit();
             var sut = new ShaVersionFilter(new[] { commit.Sha });
 
-            string reason;
-            Should.Throw<ArgumentNullException>(() => sut.Exclude(null, out reason));
+            Should.Throw<ArgumentNullException>(() => sut.Exclude(null, out _));
         }
 
         [Test]
@@ -34,8 +34,7 @@ namespace GitVersionCore.Tests.VersionFilters
             var version = new BaseVersion(context, "dummy", false, new SemanticVersion(1), commit, string.Empty);
             var sut = new ShaVersionFilter(new[] { commit.Sha });
 
-            string reason;
-            sut.Exclude(version, out reason).ShouldBeTrue();
+            sut.Exclude(version, out var reason).ShouldBeTrue();
             reason.ShouldNotBeNullOrWhiteSpace();
         }
 
@@ -47,8 +46,7 @@ namespace GitVersionCore.Tests.VersionFilters
             var version = new BaseVersion(context, "dummy", false, new SemanticVersion(1), commit, string.Empty);
             var sut = new ShaVersionFilter(new[] { "mismatched" });
 
-            string reason;
-            sut.Exclude(version, out reason).ShouldBeFalse();
+            sut.Exclude(version, out var reason).ShouldBeFalse();
             reason.ShouldBeNull();
         }
 
@@ -59,8 +57,7 @@ namespace GitVersionCore.Tests.VersionFilters
             var version = new BaseVersion(context, "dummy", false, new SemanticVersion(1), null, string.Empty);
             var sut = new ShaVersionFilter(new[] { "mismatched" });
 
-            string reason;
-            sut.Exclude(version, out reason).ShouldBeFalse();
+            sut.Exclude(version, out var reason).ShouldBeFalse();
             reason.ShouldBeNull();
         }
     }

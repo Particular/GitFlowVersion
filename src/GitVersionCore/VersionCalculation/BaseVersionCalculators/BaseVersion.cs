@@ -1,10 +1,10 @@
-﻿namespace GitVersion.VersionCalculation.BaseVersionCalculators
-{
-    using LibGit2Sharp;
+using LibGit2Sharp;
 
+namespace GitVersion.VersionCalculation.BaseVersionCalculators
+{
     public class BaseVersion
     {
-        GitVersionContext _context;
+        private readonly GitVersionContext context;
 
         public BaseVersion(GitVersionContext context, string source, bool shouldIncrement, SemanticVersion semanticVersion, Commit baseVersionSource, string branchNameOverride)
         {
@@ -13,7 +13,7 @@
             SemanticVersion = semanticVersion;
             BaseVersionSource = baseVersionSource;
             BranchNameOverride = branchNameOverride;
-            _context = context;
+            this.context = context;
         }
 
         public string Source { get; private set; }
@@ -28,11 +28,7 @@
 
         public override string ToString()
         {
-            return string.Format(
-                "{0}: {1} with commit count source {2} (Incremented: {3})",
-                Source, SemanticVersion.ToString("f"),
-                BaseVersionSource == null ? "External Source" : BaseVersionSource.Sha,
-                ShouldIncrement ? BaseVersionCalculator.MaybeIncrement(_context, this).ToString("t") : "None");
+            return $"{Source}: {SemanticVersion.ToString("f")} with commit count source {(BaseVersionSource == null ? "External Source" : BaseVersionSource.Sha)} (Incremented: {(ShouldIncrement ? BaseVersionCalculator.MaybeIncrement(context, this).ToString("t") : "None")})";
         }
     }
 }

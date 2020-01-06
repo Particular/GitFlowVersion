@@ -1,15 +1,18 @@
-﻿namespace GitVersion
-{
-    using System;
+using GitVersion.Helpers;
+using GitVersion.OutputVariables;
+using GitVersion.Logging;
 
+namespace GitVersion.BuildServers
+{
     public class TeamCity : BuildServerBase
     {
+        public TeamCity(IEnvironment environment, ILog log) : base(environment, log)
+        {
+        }
+
         public const string EnvironmentVariableName = "TEAMCITY_VERSION";
 
-        public override bool CanApplyToCurrentContext()
-        {
-            return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(EnvironmentVariableName));
-        }
+        protected override string EnvironmentVariable { get; } = EnvironmentVariableName;
 
         public override string GetCurrentBranch(bool usingDynamicRepos)
         {
@@ -28,9 +31,9 @@
             return branchName;
         }
 
-        static void WriteBranchEnvVariableWarning()
+        private void WriteBranchEnvVariableWarning()
         {
-            Logger.WriteWarning(@"TeamCity doesn't make the current branch available through environmental variables.
+            Log.Warning(@"TeamCity doesn't make the current branch available through environmental variables.
 
 Depending on your authentication and transport setup of your git VCS root things may work. In that case, ignore this warning.
 
@@ -48,14 +51,14 @@ See http://gitversion.readthedocs.org/en/latest/build-server-support/build-serve
         {
             return new[]
             {
-                string.Format("##teamcity[setParameter name='GitVersion.{0}' value='{1}']", name, ServiceMessageEscapeHelper.EscapeValue(value)),
-                string.Format("##teamcity[setParameter name='system.GitVersion.{0}' value='{1}']", name, ServiceMessageEscapeHelper.EscapeValue(value))
+                $"##teamcity[setParameter name='GitVersion.{name}' value='{ServiceMessageEscapeHelper.EscapeValue(value)}']",
+                $"##teamcity[setParameter name='system.GitVersion.{name}' value='{ServiceMessageEscapeHelper.EscapeValue(value)}']"
             };
         }
 
         public override string GenerateSetVersionMessage(VersionVariables variables)
         {
-            return string.Format("##teamcity[buildNumber '{0}']", ServiceMessageEscapeHelper.EscapeValue(variables.FullSemVer));
+            return $"##teamcity[buildNumber '{ServiceMessageEscapeHelper.EscapeValue(variables.FullSemVer)}']";
         }
     }
 }

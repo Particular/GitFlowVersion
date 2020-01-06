@@ -1,19 +1,23 @@
+using System.Collections.Generic;
+using GitVersion.Configuration.Init.Wizard;
+using GitVersion.Logging;
+
 namespace GitVersion.Configuration.Init.SetConfig
 {
-    using System.Collections.Generic;
-    using GitVersion.Configuration.Init.Wizard;
-    using GitVersion.Helpers;
-
     public class ConfigureBranch : ConfigInitWizardStep
     {
-        string name;
-        readonly BranchConfig branchConfig;
+        private string name;
+        private BranchConfig branchConfig;
 
-        public ConfigureBranch(string name, BranchConfig branchConfig, IConsole console, IFileSystem fileSystem) 
-            : base(console, fileSystem)
+        public ConfigureBranch(IConsole console, IFileSystem fileSystem, ILog log, IConfigInitStepFactory stepFactory) : base(console, fileSystem, log, stepFactory)
+        {
+        }
+
+        public ConfigureBranch WithData(string name, BranchConfig branchConfig)
         {
             this.branchConfig = branchConfig;
             this.name = name;
+            return this;
         }
 
         protected override StepResult HandleResult(string result, Queue<ConfigInitWizardStep> steps, Config config, string workingDirectory)
@@ -21,13 +25,13 @@ namespace GitVersion.Configuration.Init.SetConfig
             switch (result)
             {
                 case "0":
-                    steps.Enqueue(new ConfigureBranches(Console, FileSystem));
+                    steps.Enqueue(StepFactory.CreateStep<ConfigureBranches>());
                     return StepResult.Ok();
                 case "1":
-                    steps.Enqueue(new SetBranchTag(name, branchConfig, Console, FileSystem));
+                    steps.Enqueue(StepFactory.CreateStep<SetBranchTag>().WithData(name, branchConfig));
                     return StepResult.Ok();
                 case "2":
-                    steps.Enqueue(new SetBranchIncrementMode(name, branchConfig, Console, FileSystem));
+                    steps.Enqueue(StepFactory.CreateStep<SetBranchIncrementMode>().WithData(name, branchConfig));
                     return StepResult.Ok();
             }
 
@@ -36,16 +40,13 @@ namespace GitVersion.Configuration.Init.SetConfig
 
         protected override string GetPrompt(Config config, string workingDirectory)
         {
-            return string.Format(@"What would you like to change for '{0}':
+            return $@"What would you like to change for '{name}':
 
 0) Go Back
-1) Branch Pre-release tag (Current: {1})
-2) Branch Increment mode (per commit/after tag) (Current: {2})", name, branchConfig.Tag, branchConfig.VersioningMode);
+1) Branch Pre-release tag (Current: {branchConfig.Tag})
+2) Branch Increment mode (per commit/after tag) (Current: {branchConfig.VersioningMode})";
         }
 
-        protected override string DefaultResult
-        {
-            get { return "0"; }
-        }
+        protected override string DefaultResult => "0";
     }
 }

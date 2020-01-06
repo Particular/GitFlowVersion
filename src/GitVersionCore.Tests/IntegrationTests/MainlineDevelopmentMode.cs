@@ -1,25 +1,28 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using GitTools.Testing;
 using GitVersion;
-using GitVersionCore.Tests;
+using GitVersion.Configuration;
+using GitVersion.VersioningModes;
 using LibGit2Sharp;
 using NUnit.Framework;
-using System.Collections.Generic;
+using GitVersion.Extensions;
 
-public class MainlineDevelopmentMode : TestBase
+namespace GitVersionCore.Tests.IntegrationTests
 {
-    private Config config = new Config
+    public class MainlineDevelopmentMode : TestBase
     {
-        VersioningMode = VersioningMode.Mainline
-    };
-
-    [Test]
-    public void MergedFeatureBranchesToMasterImpliesRelease()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        private readonly Config config = new Config
         {
+            VersioningMode = VersioningMode.Mainline
+        };
+
+        [Test]
+        public void MergedFeatureBranchesToMasterImpliesRelease()
+        {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit("1");
             fixture.MakeATaggedCommit("1.0.0");
 
@@ -84,13 +87,11 @@ public class MainlineDevelopmentMode : TestBase
             fixture.AssertFullSemver(config, "3.3.0");
             Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
         }
-    }
 
-    [Test]
-    public void VerifyPullRequestsActLikeContinuousDelivery()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void VerifyPullRequestsActLikeContinuousDelivery()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit("1");
             fixture.MakeATaggedCommit("1.0.0");
             fixture.MakeACommit();
@@ -103,13 +104,11 @@ public class MainlineDevelopmentMode : TestBase
             fixture.Repository.CreatePullRequestRef("feature/foo", "master", normalise: true, prNumber: 8);
             fixture.AssertFullSemver(config, "1.0.2-PullRequest0008.3");
         }
-    }
 
-    [Test]
-    public void SupportBranches()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void SupportBranches()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit("1");
             fixture.MakeATaggedCommit("1.0.0");
             fixture.MakeACommit(); // 1.0.1
@@ -138,13 +137,11 @@ public class MainlineDevelopmentMode : TestBase
             fixture.Repository.CreatePullRequestRef("feature/foo", "support/1.0", normalise: true, prNumber: 7);
             fixture.AssertFullSemver(config, "1.0.5-PullRequest0007.3");
         }
-    }
 
-    [Test]
-    public void VerifyForwardMerge()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void VerifyForwardMerge()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit("1");
             fixture.MakeATaggedCommit("1.0.0");
             fixture.MakeACommit(); // 1.0.1
@@ -166,13 +163,11 @@ public class MainlineDevelopmentMode : TestBase
             fixture.MergeNoFF("master");
             fixture.AssertFullSemver(config, "1.0.3-foo.3");
         }
-    }
 
-    [Test]
-    public void VerifySupportForwardMerge()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void VerifySupportForwardMerge()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit("1");
             fixture.MakeATaggedCommit("1.0.0");
             fixture.MakeACommit(); // 1.0.1
@@ -196,13 +191,11 @@ public class MainlineDevelopmentMode : TestBase
             fixture.MakeACommit();
             fixture.AssertFullSemver(config, "1.0.4-foo.2"); // TODO This probably should be 1.0.5
         }
-    }
 
-    [Test]
-    public void VerifyDevelopTracksMasterVersion()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void VerifyDevelopTracksMasterVersion()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit("1");
             fixture.MakeATaggedCommit("1.0.0");
             fixture.MakeACommit();
@@ -235,13 +228,11 @@ public class MainlineDevelopmentMode : TestBase
             fixture.Checkout("develop");
             fixture.AssertFullSemver(config, "1.2.0-alpha.1");
         }
-    }
 
-    [Test]
-    public void VerifyDevelopFeatureTracksMasterVersion()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void VerifyDevelopFeatureTracksMasterVersion()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit("1");
             fixture.MakeATaggedCommit("1.0.0");
             fixture.MakeACommit();
@@ -284,13 +275,11 @@ public class MainlineDevelopmentMode : TestBase
             fixture.MergeNoFF("feature/foo");
             fixture.AssertFullSemver(config, "1.2.0-alpha.2");
         }
-    }
 
-    [Test]
-    public void VerifyMergingMasterToFeatureDoesNotCauseBranchCommitsToIncrementVersion()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void VerifyMergingMasterToFeatureDoesNotCauseBranchCommitsToIncrementVersion()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.MakeACommit("first in master");
 
             fixture.BranchTo("feature/foo", "foo");
@@ -309,13 +298,11 @@ public class MainlineDevelopmentMode : TestBase
             fixture.MergeNoFF("feature/foo");
             fixture.AssertFullSemver(config, "1.0.1");
         }
-    }
 
-    [Test]
-    public void VerifyMergingMasterToFeatureDoesNotStopMasterCommitsIncrementingVersion()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void VerifyMergingMasterToFeatureDoesNotStopMasterCommitsIncrementingVersion()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.MakeACommit("first in master");
 
             fixture.BranchTo("feature/foo", "foo");
@@ -333,13 +320,11 @@ public class MainlineDevelopmentMode : TestBase
             fixture.MergeNoFF("feature/foo");
             fixture.AssertFullSemver(config, "1.0.2");
         }
-    }
 
-    [Test]
-    public void VerifyIssue1154_CanForwardMergeMasterToFeatureBranch()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void VerifyIssue1154CanForwardMergeMasterToFeatureBranch()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.MakeACommit();
             fixture.BranchTo("feature/branch2");
             fixture.BranchTo("feature/branch1");
@@ -358,13 +343,11 @@ public class MainlineDevelopmentMode : TestBase
 
             fixture.AssertFullSemver(config, "0.1.2-branch2.4");
         }
-    }
 
-    [Test]
-    public void VerifyMergingMasterIntoAFeatureBranchWorksWithMultipleBranches()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void VerifyMergingMasterIntoAFeatureBranchWorksWithMultipleBranches()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.MakeACommit("first in master");
 
             fixture.BranchTo("feature/foo", "foo");
@@ -391,28 +374,26 @@ public class MainlineDevelopmentMode : TestBase
             fixture.MergeNoFF("feature/bar");
             fixture.AssertFullSemver(config, "1.0.2");
         }
-    }
 
-    [Test]
-    public void MergingFeatureBranchThatIncrementsMinorNumberIncrementsMinorVersionOfMaster()
-    {
-        var currentConfig = new Config
+        [Test]
+        public void MergingFeatureBranchThatIncrementsMinorNumberIncrementsMinorVersionOfMaster()
         {
-            VersioningMode = VersioningMode.Mainline,
-            Branches = new Dictionary<string, BranchConfig>
-             {
-                 {
-                    "feature", new BranchConfig
-                     {
-                         VersioningMode = VersioningMode.ContinuousDeployment,
-                         Increment = IncrementStrategy.Minor
-                     }
-                 }
-             }
-        };
+            var currentConfig = new Config
+            {
+                VersioningMode = VersioningMode.Mainline,
+                Branches = new Dictionary<string, BranchConfig>
+                {
+                    {
+                        "feature", new BranchConfig
+                        {
+                            VersioningMode = VersioningMode.ContinuousDeployment,
+                            Increment = IncrementStrategy.Minor
+                        }
+                    }
+                }
+            };
 
-        using (var fixture = new EmptyRepositoryFixture())
-        {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.MakeACommit("first in master");
             fixture.MakeATaggedCommit("1.0.0");
             fixture.AssertFullSemver(currentConfig, "1.0.0");
@@ -426,40 +407,38 @@ public class MainlineDevelopmentMode : TestBase
             fixture.MergeNoFF("feature/foo");
             fixture.AssertFullSemver(currentConfig, "1.1.0");
         }
-    }
 
-    [Test]
-    public void VerifyIncrementConfigIsHonoured()
-    {
-        var minorIncrementConfig = new Config
+        [Test]
+        public void VerifyIncrementConfigIsHonoured()
         {
-            VersioningMode = VersioningMode.Mainline,
-            Increment = IncrementStrategy.Minor,
-            Branches = new Dictionary<string, BranchConfig>
+            var minorIncrementConfig = new Config
             {
+                VersioningMode = VersioningMode.Mainline,
+                Increment = IncrementStrategy.Minor,
+                Branches = new Dictionary<string, BranchConfig>
                 {
-                    "master",
-                    new BranchConfig
                     {
-                        Increment = IncrementStrategy.Minor,
-                        Name = "master",
-                        Regex = "master"
-                    }
-                },
-                {
-                    "feature",
-                    new BranchConfig
+                        "master",
+                        new BranchConfig
+                        {
+                            Increment = IncrementStrategy.Minor,
+                            Name = "master",
+                            Regex = "master"
+                        }
+                    },
                     {
-                        Increment = IncrementStrategy.Minor,
-                        Name = "feature",
-                        Regex = "features?[/-]"
+                        "feature",
+                        new BranchConfig
+                        {
+                            Increment = IncrementStrategy.Minor,
+                            Name = "feature",
+                            Regex = "features?[/-]"
+                        }
                     }
                 }
-            }
-        };
+            };
 
-        using ( var fixture = new EmptyRepositoryFixture() )
-        {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit("1");
             fixture.MakeATaggedCommit("1.0.0");
 
@@ -525,23 +504,25 @@ public class MainlineDevelopmentMode : TestBase
             Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
         }
     }
-}
 
-static class CommitExtensions
-{
-    public static void MakeACommit(this RepositoryFixtureBase fixture, string commitMsg)
+    internal static class CommitExtensions
     {
-        fixture.Repository.MakeACommit(commitMsg);
-        var diagramBuilder = (StringBuilder)typeof(SequenceDiagram)
-            .GetField("_diagramBuilder", BindingFlags.Instance | BindingFlags.NonPublic)
-            .GetValue(fixture.SequenceDiagram);
-        Func<string, string> getParticipant = participant => (string)typeof(SequenceDiagram)
-            .GetMethod("GetParticipant", BindingFlags.Instance | BindingFlags.NonPublic)
-            .Invoke(fixture.SequenceDiagram, new object[]
-            {
-                    participant
-            });
-        diagramBuilder.AppendLineFormat("{0} -> {0}: Commit '{1}'", getParticipant(fixture.Repository.Head.FriendlyName),
-            commitMsg);
+        public static void MakeACommit(this RepositoryFixtureBase fixture, string commitMsg)
+        {
+            fixture.Repository.MakeACommit(commitMsg);
+            var diagramBuilder = (StringBuilder)typeof(SequenceDiagram)
+                .GetField("_diagramBuilder", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.GetValue(fixture.SequenceDiagram);
+
+            string GetParticipant(string participant) =>
+                (string) typeof(SequenceDiagram).GetMethod("GetParticipant", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.Invoke(fixture.SequenceDiagram, new object[]
+                    {
+                        participant
+                    });
+
+            diagramBuilder.AppendLineFormat("{0} -> {0}: Commit '{1}'", GetParticipant(fixture.Repository.Head.FriendlyName),
+                commitMsg);
+        }
     }
 }

@@ -1,77 +1,78 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using GitVersion.Configuration.Init.Wizard;
+using GitVersion.Logging;
+
 namespace GitVersion.Configuration.Init.BuildServer
 {
-    using System;
-    using System.Collections.Generic;
-    using System.IO;
-    using System.Text;
-    using GitVersion.Configuration.Init.Wizard;
-    using GitVersion.Helpers;
-
-    enum ProjectVisibility
+    internal enum ProjectVisibility
     {
         Public = 0,
         Private = 1
     }
 
-    class AppVeyorSetup : ConfigInitWizardStep
+    internal class AppVeyorSetup : ConfigInitWizardStep
     {
-        private ProjectVisibility _projectVisibility;
+        private ProjectVisibility projectVisibility;
 
-        public AppVeyorSetup(IConsole console, IFileSystem fileSystem, ProjectVisibility visibility) : base(console, fileSystem)
+        public AppVeyorSetup(IConsole console, IFileSystem fileSystem, ILog log, IConfigInitStepFactory stepFactory) : base(console, fileSystem, log, stepFactory)
         {
-            _projectVisibility = visibility;
+        }
+
+        public AppVeyorSetup WithData(ProjectVisibility visibility)
+        {
+            projectVisibility = visibility;
+            return this;
         }
 
         protected override StepResult HandleResult(string result, Queue<ConfigInitWizardStep> steps, Config config, string workingDirectory)
         {
+            var editConfigStep = StepFactory.CreateStep<EditConfigStep>();
             switch (result)
             {
                 case "0":
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(editConfigStep);
                     return StepResult.Ok();
                 case "1":
                     GenerateBasicConfig(workingDirectory);
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(editConfigStep);
                     return StepResult.Ok();
                 case "2":
                     GenerateNuGetConfig(workingDirectory);
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(editConfigStep);
                     return StepResult.Ok();
             }
             return StepResult.InvalidResponseSelected();
         }
 
-        static private string GetGVCommand(ProjectVisibility visibility)
+        private static string GetGvCommand(ProjectVisibility visibility)
         {
-            switch (visibility)
+            return visibility switch
             {
-                case ProjectVisibility.Public:
-                    return "  - ps: gitversion /l console /output buildserver /updateAssemblyInfo";
-                case ProjectVisibility.Private:
-                    return "  - ps: gitversion $env:APPVEYOR_BUILD_FOLDER /l console /output buildserver /updateAssemblyInfo /nofetch /b $env:APPVEYOR_REPO_BRANCH";
-                default:
-                    return "";
-            }
-        } 
+                ProjectVisibility.Public => "  - ps: gitversion /l console /output buildserver /updateAssemblyInfo",
+                ProjectVisibility.Private => "  - ps: gitversion $env:APPVEYOR_BUILD_FOLDER /l console /output buildserver /updateAssemblyInfo /nofetch /b $env:APPVEYOR_REPO_BRANCH",
+                _ => ""
+            };
+        }
 
-        void GenerateBasicConfig(string workingDirectory)
+        private void GenerateBasicConfig(string workingDirectory)
         {
-            WriteConfig(workingDirectory, FileSystem, String.Format(@"install:
+            WriteConfig(workingDirectory, FileSystem, $@"install:
   - choco install gitversion.portable -pre -y
 
 before_build:
   - nuget restore
-{0}
+{GetGvCommand(projectVisibility)}
 
 build:
-  project: <your sln file>",
-                GetGVCommand(_projectVisibility)
-            ));
+  project: <your sln file>");
         }
 
-        void GenerateNuGetConfig(string workingDirectory)
+        private void GenerateNuGetConfig(string workingDirectory)
         {
-            WriteConfig(workingDirectory, FileSystem, String.Format(@"install:
+            WriteConfig(workingDirectory, FileSystem, $@"install:
   - choco install gitversion.portable -pre -y
 
 assembly_info:
@@ -79,7 +80,7 @@ assembly_info:
 
 before_build:
   - nuget restore
-{0}
+{GetGvCommand(projectVisibility)}
 
 build:
   project: <your sln file>
@@ -87,16 +88,14 @@ build:
 after_build:
   - cmd: ECHO nuget pack <Project>\<NuSpec>.nuspec -version ""%GitVersion_NuGetVersion%"" -prop ""target=%CONFIGURATION%""
   - cmd: nuget pack <Project>\<NuSpec>.nuspec -version ""%GitVersion_NuGetVersion%"" -prop ""target=%CONFIGURATION%""
-  - cmd: appveyor PushArtifact ""<NuSpec>.%GitVersion_NuGetVersion%.nupkg""",
-                GetGVCommand(_projectVisibility)
-            ));
+  - cmd: appveyor PushArtifact ""<NuSpec>.%GitVersion_NuGetVersion%.nupkg""");
         }
 
-        void WriteConfig(string workingDirectory, IFileSystem fileSystem, string configContents)
+        private void WriteConfig(string workingDirectory, IFileSystem fileSystem, string configContents)
         {
             var outputFilename = GetOutputFilename(workingDirectory, fileSystem);
             fileSystem.WriteAllText(outputFilename, configContents);
-            Logger.WriteInfo(string.Format("AppVeyor sample config file written to {0}", outputFilename));
+            Log.Info($"AppVeyor sample config file written to {outputFilename}");
         }
 
         protected override string GetPrompt(Config config, string workingDirectory)
@@ -117,14 +116,14 @@ after_build:
             return prompt.ToString();
         }
 
-        string GetOutputFilename(string workingDirectory, IFileSystem fileSystem)
+        private string GetOutputFilename(string workingDirectory, IFileSystem fileSystem)
         {
             if (AppVeyorConfigExists(workingDirectory, fileSystem))
             {
                 var count = 0;
                 do
                 {
-                    var path = Path.Combine(workingDirectory, string.Format("appveyor.gitversion{0}.yml", count == 0 ? string.Empty : "." + count));
+                    var path = Path.Combine(workingDirectory, $"appveyor.gitversion{(count == 0 ? string.Empty : "." + count)}.yml");
 
                     if (!fileSystem.Exists(path))
                     {
@@ -139,14 +138,11 @@ after_build:
             return Path.Combine(workingDirectory, "appveyor.yml");
         }
 
-        static bool AppVeyorConfigExists(string workingDirectory, IFileSystem fileSystem)
+        private static bool AppVeyorConfigExists(string workingDirectory, IFileSystem fileSystem)
         {
             return fileSystem.Exists(Path.Combine(workingDirectory, "appveyor.yml"));
         }
 
-        protected override string DefaultResult
-        {
-            get { return "0"; }
-        }
+        protected override string DefaultResult => "0";
     }
 }

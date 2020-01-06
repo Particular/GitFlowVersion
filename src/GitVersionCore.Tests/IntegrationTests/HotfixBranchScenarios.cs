@@ -1,19 +1,21 @@
 ﻿using System.Linq;
 using GitTools.Testing;
-using GitVersionCore.Tests;
 using LibGit2Sharp;
 using NUnit.Framework;
-using GitVersion;
+using GitVersion.Configuration;
+using GitVersion.VersioningModes;
+using GitVersion.Extensions;
 
-[TestFixture]
-public class HotfixBranchScenarios : TestBase
+namespace GitVersionCore.Tests.IntegrationTests
 {
-    [Test]
-    // This test actually validates #465 as well
-    public void PatchLatestReleaseExample()
+    [TestFixture]
+    public class HotfixBranchScenarios : TestBase
     {
-        using (var fixture = new BaseGitFlowRepositoryFixture("1.2.0"))
+        [Test]
+        // This test actually validates #465 as well
+        public void PatchLatestReleaseExample()
         {
+            using var fixture = new BaseGitFlowRepositoryFixture("1.2.0");
             // create hotfix
             Commands.Checkout(fixture.Repository, "master");
             Commands.Checkout(fixture.Repository, fixture.Repository.CreateBranch("hotfix-1.2.1"));
@@ -43,19 +45,16 @@ public class HotfixBranchScenarios : TestBase
             fixture.Repository.MergeNoFF("hotfix-1.2.1", Generate.SignatureNow());
             fixture.AssertFullSemver("1.3.0-alpha.5");
         }
-    }
 
-    [Test]
-    public void CanTakeVersionFromHotfixesBranch()
-    {
-        using (var fixture = new BaseGitFlowRepositoryFixture(r =>
+        [Test]
+        public void CanTakeVersionFromHotfixesBranch()
         {
-            r.MakeATaggedCommit("1.0.0");
-            r.MakeATaggedCommit("1.1.0");
-            r.MakeATaggedCommit("2.0.0");
-        }))
-        {
-
+            using var fixture = new BaseGitFlowRepositoryFixture(r =>
+            {
+                r.MakeATaggedCommit("1.0.0");
+                r.MakeATaggedCommit("1.1.0");
+                r.MakeATaggedCommit("2.0.0");
+            });
             // Merge hotfix branch to support
             Commands.Checkout(fixture.Repository, "master");
             Commands.Checkout(fixture.Repository, fixture.Repository.CreateBranch("support-1.1", (Commit)fixture.Repository.Tags.Single(t => t.FriendlyName == "1.1.0").Target));
@@ -70,18 +69,16 @@ public class HotfixBranchScenarios : TestBase
             fixture.Repository.MakeACommit();
             fixture.AssertFullSemver("1.1.1-beta.1+2");
         }
-    }
 
-    [Test]
-    public void PatchOlderReleaseExample()
-    {
-        using (var fixture = new BaseGitFlowRepositoryFixture(r =>
+        [Test]
+        public void PatchOlderReleaseExample()
         {
-            r.MakeATaggedCommit("1.0.0");
-            r.MakeATaggedCommit("1.1.0");
-            r.MakeATaggedCommit("2.0.0");
-        }))
-        {
+            using var fixture = new BaseGitFlowRepositoryFixture(r =>
+            {
+                r.MakeATaggedCommit("1.0.0");
+                r.MakeATaggedCommit("1.1.0");
+                r.MakeATaggedCommit("2.0.0");
+            });
             // Merge hotfix branch to support
             Commands.Checkout(fixture.Repository, "master");
             var tag = fixture.Repository.Tags.Single(t => t.FriendlyName == "1.1.0");
@@ -123,23 +120,20 @@ public class HotfixBranchScenarios : TestBase
             fixture.Repository.MergeNoFF("support-1.1", Generate.SignatureNow());
             fixture.AssertFullSemver("2.1.0-alpha.7");
         }
-    }
 
-    /// <summary>
-    /// Create a feature branch from a hotfix branch, and merge back, then delete it
-    /// </summary>
-    [Test]
-    public void FeatureOnHotfix_FeatureBranchDeleted()
-    {
-        var config = new Config
+        /// <summary>
+        /// Create a feature branch from a hotfix branch, and merge back, then delete it
+        /// </summary>
+        [Test]
+        public void FeatureOnHotfixFeatureBranchDeleted()
         {
-            AssemblyVersioningScheme = AssemblyVersioningScheme.MajorMinorPatchTag,
-            VersioningMode = VersioningMode.ContinuousDeployment
-        };
+            var config = new Config
+            {
+                AssemblyVersioningScheme = AssemblyVersioningScheme.MajorMinorPatchTag,
+                VersioningMode = VersioningMode.ContinuousDeployment
+            };
 
-        using (var fixture = new EmptyRepositoryFixture())
-        {
-
+            using var fixture = new EmptyRepositoryFixture();
             var release450 = "release/4.5.0";
             var hotfix451 = "hotfix/4.5.1";
             var support45 = "support/4.5";
@@ -179,23 +173,20 @@ public class HotfixBranchScenarios : TestBase
             fixture.Repository.Branches.Remove(featureBranch);
             fixture.AssertFullSemver(config, "4.5.1-beta.2");
         }
-    }
 
-    /// <summary>
-    /// Create a feature branch from a hotfix branch, and merge back, but don't delete it
-    /// </summary>
-    [Test]
-    public void FeatureOnHotfix_FeatureBranchNotDeleted()
-    {
-        var config = new Config
+        /// <summary>
+        /// Create a feature branch from a hotfix branch, and merge back, but don't delete it
+        /// </summary>
+        [Test]
+        public void FeatureOnHotfixFeatureBranchNotDeleted()
         {
-            AssemblyVersioningScheme = AssemblyVersioningScheme.MajorMinorPatchTag,
-            VersioningMode = VersioningMode.ContinuousDeployment
-        };
+            var config = new Config
+            {
+                AssemblyVersioningScheme = AssemblyVersioningScheme.MajorMinorPatchTag,
+                VersioningMode = VersioningMode.ContinuousDeployment
+            };
 
-        using (var fixture = new EmptyRepositoryFixture())
-        {
-
+            using var fixture = new EmptyRepositoryFixture();
             var release450 = "release/4.5.0";
             var hotfix451 = "hotfix/4.5.1";
             var support45 = "support/4.5";
@@ -234,6 +225,6 @@ public class HotfixBranchScenarios : TestBase
             fixture.Repository.MergeNoFF(featureBranch, Generate.SignatureNow()); // commit 2
             fixture.AssertFullSemver(config, "4.5.1-beta.2");
         }
-    }
 
+    }
 }

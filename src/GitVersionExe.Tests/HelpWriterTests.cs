@@ -4,38 +4,50 @@ using GitVersion;
 using NUnit.Framework;
 using Shouldly;
 
-public class HelpWriterTests
+namespace GitVersionExe.Tests
 {
-    [Test]
-    public void AllArgsAreInHelp()
+    public class HelpWriterTests
     {
-        var lookup = new Dictionary<string, string>
+        private readonly IHelpWriter helpWriter;
+
+        public HelpWriterTests()
         {
-            { "TargetUrl", "/url" },
-            { "Init", "init" },
-            { "TargetBranch", "/b" },
-            { "LogFilePath" , "/l" },
-            { "DynamicRepositoryLocation" , "/dynamicRepoLocation" },
-            { "IsHelp", "/?" },
-            { "IsVersion", "/version" },
-            { "UpdateWixVersionFile", "/updatewixversionfile" }
-        };
-        string helpText = null;
+            var versionWriter = new VersionWriter();
+            helpWriter = new HelpWriter(versionWriter);
+        }
 
-        HelpWriter.WriteTo(s => helpText = s);
+        [Test]
+        public void AllArgsAreInHelp()
+        {
+            var lookup = new Dictionary<string, string>
+            {
+                { "TargetUrl", "/url" },
+                { "Init", "init" },
+                { "TargetBranch", "/b" },
+                { "LogFilePath" , "/l" },
+                { "DynamicRepositoryLocation" , "/dynamicRepoLocation" },
+                { "IsHelp", "/?" },
+                { "IsVersion", "/version" },
+                { "UpdateWixVersionFile", "/updatewixversionfile" },
+                { "ConfigFile", "/config" },
+            };
+            string helpText = null;
 
-        typeof(Arguments).GetFields()
-            .Select(p => p.Name)
-            .Where(p => IsNotInHelp(lookup, p, helpText))
-            .Except(new[] { "Authentication", "CommitId" })
-            .ShouldBeEmpty();
-    }
+            helpWriter.WriteTo(s => helpText = s);
 
-    static bool IsNotInHelp(Dictionary<string, string> lookup, string propertyName, string helpText)
-    {
-        if (lookup.ContainsKey(propertyName))
-            return !helpText.Contains(lookup[propertyName]);
+            typeof(Arguments).GetFields()
+                .Select(p => p.Name)
+                .Where(p => IsNotInHelp(lookup, p, helpText))
+                .Except(new[] { "Authentication", "CommitId", "HasOverrideConfig" })
+                .ShouldBeEmpty();
+        }
 
-        return !helpText.Contains("/" + propertyName.ToLower());
+        private static bool IsNotInHelp(Dictionary<string, string> lookup, string propertyName, string helpText)
+        {
+            if (lookup.ContainsKey(propertyName))
+                return !helpText.Contains(lookup[propertyName]);
+
+            return !helpText.Contains("/" + propertyName.ToLower());
+        }
     }
 }

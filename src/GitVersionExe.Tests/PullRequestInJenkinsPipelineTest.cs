@@ -1,20 +1,22 @@
-﻿using System;
+using System;
 using GitTools.Testing;
 using LibGit2Sharp;
 using NUnit.Framework;
 using Shouldly;
+using GitVersionExe.Tests.Helpers;
 
-[TestFixture]
-public class PullRequestInJenkinsTest
+namespace GitVersionExe.Tests
 {
-    [TestCase]
-    public void GivenJenkinsPipelineHasDuplicatedOrigin_VersionIsCalculatedProperly()
+    [TestFixture]
+    public class PullRequestInJenkinsTest
     {
-        string pipelineBranch = "BRANCH_NAME";
-        string pipelineBranchOrig = Environment.GetEnvironmentVariable(pipelineBranch);
-
-        using (var fixture = new EmptyRepositoryFixture())
+        [TestCase]
+        public void GivenJenkinsPipelineHasDuplicatedOriginVersionIsCalculatedProperly()
         {
+            var pipelineBranch = "BRANCH_NAME";
+            var pipelineBranchOrig = Environment.GetEnvironmentVariable(pipelineBranch);
+
+            using var fixture = new EmptyRepositoryFixture();
             var remoteRepositoryPath = PathHelper.GetTempPath();
             Repository.Init(remoteRepositoryPath);
             using (var remoteRepository = new Repository(remoteRepositoryPath))
@@ -43,7 +45,7 @@ public class PullRequestInJenkinsTest
 
             // Emulating Jenkins environment variable
             Environment.SetEnvironmentVariable(pipelineBranch, "PR-5");
-            Environment.SetEnvironmentVariable("JENKINS_URL", "url", EnvironmentVariableTarget.Process);
+            Environment.SetEnvironmentVariable("JENKINS_URL", "url");
 
             var result = GitVersionHelper.ExecuteIn(fixture.RepositoryPath);
             
@@ -54,7 +56,7 @@ public class PullRequestInJenkinsTest
             DirectoryHelper.DeleteDirectory(remoteRepositoryPath);
 
             Environment.SetEnvironmentVariable(pipelineBranch, pipelineBranchOrig);
-            Environment.SetEnvironmentVariable("JENKINS_URL", null, EnvironmentVariableTarget.Process);
+            Environment.SetEnvironmentVariable("JENKINS_URL", null);
         }
     }
 }

@@ -1,19 +1,24 @@
-﻿namespace GitVersion.Configuration.Init.SetConfig
-{
-    using System.Collections.Generic;
-    using GitVersion.Configuration.Init.Wizard;
-    using GitVersion.Helpers;
+using System.Collections.Generic;
+using GitVersion.Configuration.Init.Wizard;
+using GitVersion.VersioningModes;
+using GitVersion.Logging;
 
+namespace GitVersion.Configuration.Init.SetConfig
+{
     public class GlobalModeSetting : ConfigInitWizardStep
     {
-        readonly ConfigInitWizardStep returnToStep;
-        readonly bool isPartOfWizard;
+        private ConfigInitWizardStep returnToStep;
+        private bool isPartOfWizard;
 
-        public GlobalModeSetting(ConfigInitWizardStep returnToStep, bool isPartOfWizard, IConsole console, IFileSystem fileSystem)
-            : base(console, fileSystem)
+        public GlobalModeSetting(IConsole console, IFileSystem fileSystem, ILog log, IConfigInitStepFactory stepFactory) : base(console, fileSystem, log, stepFactory)
+        {
+        }
+
+        public GlobalModeSetting WithData(ConfigInitWizardStep returnToStep, bool isPartOfWizard)
         {
             this.returnToStep = returnToStep;
             this.isPartOfWizard = isPartOfWizard;
+            return this;
         }
 
         protected override StepResult HandleResult(string result, Queue<ConfigInitWizardStep> steps, Config config, string workingDirectory)
@@ -43,19 +48,14 @@
 
         protected override string GetPrompt(Config config, string workingDirectory)
         {
-            return string.Format(@"What do you want the default increment mode to be (can be overriden per branch):
-{0}
+            return $@"What do you want the default increment mode to be (can be overriden per branch):
+{(!isPartOfWizard ? "0) Go Back" : string.Empty)}
 1) Follow SemVer and only increment when a release has been tagged (continuous delivery mode)
 2) Increment based on branch config every commit (continuous deployment mode)
 3) Each merged branch against master will increment the version (mainline mode)
-{1}", 
-!isPartOfWizard ? "0) Go Back" : string.Empty,
-isPartOfWizard ? "4) Skip" : string.Empty);
+{(isPartOfWizard ? "4) Skip" : string.Empty)}";
         }
 
-        protected override string DefaultResult
-        {
-            get { return "4"; }
-        }
+        protected override string DefaultResult => "4";
     }
 }

@@ -1,11 +1,11 @@
-﻿namespace GitVersionCore.Tests.VersionCalculation.Strategies
-{
-    using System.Linq;
-    using GitVersion;
-    using GitVersion.VersionCalculation.BaseVersionCalculators;
-    using NUnit.Framework;
-    using Shouldly;
+using System.Linq;
+using GitVersion.Configuration;
+using GitVersion.VersionCalculation.BaseVersionCalculators;
+using NUnit.Framework;
+using Shouldly;
 
+namespace GitVersionCore.Tests.VersionCalculation.Strategies
+{
     [TestFixture]
     public class ConfigNextVersionBaseVersionStrategyTests : TestBase
     {
@@ -17,7 +17,7 @@
                 {
                     NextVersion = "1.0.0"
                 });
-            var sut = new ConfigNextVersionBaseVersionStrategy();
+            var sut = new ConfigNextVersionVersionStrategy();
 
             var baseVersion = sut.GetVersions(contextBuilder.Build()).Single();
 
@@ -29,7 +29,7 @@
         public void ReturnsNullWhenNoNextVersionIsInConfig()
         {
             var contextBuilder = new GitVersionContextBuilder();
-            var sut = new ConfigNextVersionBaseVersionStrategy();
+            var sut = new ConfigNextVersionVersionStrategy();
 
             var baseVersion = sut.GetVersions(contextBuilder.Build()).SingleOrDefault();
 
@@ -44,7 +44,7 @@
                 {
                     NextVersion = "2"
                 });
-            var sut = new ConfigNextVersionBaseVersionStrategy();
+            var sut = new ConfigNextVersionVersionStrategy();
 
             var baseVersion = sut.GetVersions(contextBuilder.Build()).Single();
 
@@ -59,7 +59,7 @@
                 {
                     NextVersion = "2.118998723"
                 });
-            var sut = new ConfigNextVersionBaseVersionStrategy();
+            var sut = new ConfigNextVersionVersionStrategy();
 
             var baseVersion = sut.GetVersions(contextBuilder.Build()).Single();
 
@@ -74,7 +74,7 @@
                 {
                     NextVersion = "2.12.654651698"
                 });
-            var sut = new ConfigNextVersionBaseVersionStrategy();
+            var sut = new ConfigNextVersionVersionStrategy();
 
             var baseVersion = sut.GetVersions(contextBuilder.Build()).Single();
 

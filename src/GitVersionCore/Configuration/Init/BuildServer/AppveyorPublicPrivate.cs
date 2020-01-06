@@ -1,12 +1,12 @@
-﻿namespace GitVersion.Configuration.Init.BuildServer
-{
-    using System.Collections.Generic;
-    using GitVersion.Configuration.Init.Wizard;
-    using GitVersion.Helpers;
+using System.Collections.Generic;
+using GitVersion.Configuration.Init.Wizard;
+using GitVersion.Logging;
 
-    class AppveyorPublicPrivate : ConfigInitWizardStep
+namespace GitVersion.Configuration.Init.BuildServer
+{
+    internal class AppveyorPublicPrivate : ConfigInitWizardStep
     {
-        public AppveyorPublicPrivate(IConsole console, IFileSystem fileSystem) : base(console, fileSystem)
+        public AppveyorPublicPrivate(IConsole console, IFileSystem fileSystem, ILog log, IConfigInitStepFactory stepFactory) : base(console, fileSystem, log, stepFactory)
         {
         }
 
@@ -15,13 +15,13 @@
             switch (result)
             {
                 case "0":
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(StepFactory.CreateStep<EditConfigStep>());
                     return StepResult.Ok();
                 case "1":
-                    steps.Enqueue(new AppVeyorSetup(Console, FileSystem, ProjectVisibility.Public));
+                    steps.Enqueue(StepFactory.CreateStep<AppVeyorSetup>().WithData(ProjectVisibility.Public));
                     return StepResult.Ok();
                 case "2":
-                    steps.Enqueue(new AppVeyorSetup(Console, FileSystem, ProjectVisibility.Private));
+                    steps.Enqueue(StepFactory.CreateStep<AppVeyorSetup>().WithData(ProjectVisibility.Private));
                     return StepResult.Ok();
             }
             return StepResult.Ok();
@@ -38,9 +38,6 @@ That is ... does it require authentication to clone/pull?
 2) Private";
         }
 
-        protected override string DefaultResult
-        {
-            get { return "0"; }
-        }
+        protected override string DefaultResult => "0";
     }
 }

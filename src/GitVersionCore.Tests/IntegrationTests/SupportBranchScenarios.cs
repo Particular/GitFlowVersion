@@ -1,16 +1,16 @@
 ﻿using GitTools.Testing;
-using GitVersionCore.Tests;
 using LibGit2Sharp;
 using NUnit.Framework;
 
-[TestFixture]
-public class SupportBranchScenarios : TestBase
+namespace GitVersionCore.Tests.IntegrationTests
 {
-    [Test]
-    public void SupportIsCalculatedCorrectly()
+    [TestFixture]
+    public class SupportBranchScenarios : TestBase
     {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void SupportIsCalculatedCorrectly()
         {
+            using var fixture = new EmptyRepositoryFixture();
             // Start at 1.0.0
             fixture.Repository.MakeACommit();
             fixture.Repository.ApplyTag("1.1.0");
@@ -49,13 +49,11 @@ public class SupportBranchScenarios : TestBase
             fixture.Repository.MergeNoFF("hotfix/1.2.1");
             fixture.AssertFullSemver("1.2.1+2");
         }
-    }
 
-    [Test]
-    public void WhenSupportIsBranchedAndTaggedFromAnotherSupportEnsureNewMinorIsUsed()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void WhenSupportIsBranchedAndTaggedFromAnotherSupportEnsureNewMinorIsUsed()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.Repository.MakeACommit();
             fixture.Repository.CreateBranch("Support-1.2.0");
             Commands.Checkout(fixture.Repository, "Support-1.2.0");

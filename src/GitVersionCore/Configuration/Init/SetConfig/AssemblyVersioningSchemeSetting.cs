@@ -1,41 +1,43 @@
+using System.Collections.Generic;
+using GitVersion.Configuration.Init.Wizard;
+using GitVersion.Extensions;
+using GitVersion.Logging;
+
 namespace GitVersion.Configuration.Init.SetConfig
 {
-    using System.Collections.Generic;
-    using GitVersion.Helpers;
-    using Wizard;
-
     public class AssemblyVersioningSchemeSetting : ConfigInitWizardStep
     {
-        public AssemblyVersioningSchemeSetting(IConsole console, IFileSystem fileSystem) : base(console, fileSystem)
+        public AssemblyVersioningSchemeSetting(IConsole console, IFileSystem fileSystem, ILog log, IConfigInitStepFactory stepFactory) : base(console, fileSystem, log, stepFactory)
         {
         }
 
         protected override StepResult HandleResult(string result, Queue<ConfigInitWizardStep> steps, Config config, string workingDirectory)
         {
+            var editConfigStep = StepFactory.CreateStep<EditConfigStep>();
             switch (result)
             {
                 case "0":
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(editConfigStep);
                     return StepResult.Ok();
                 case "1":
                     config.AssemblyVersioningScheme = AssemblyVersioningScheme.Major;
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(editConfigStep);
                     return StepResult.Ok();
                 case "2":
                     config.AssemblyVersioningScheme = AssemblyVersioningScheme.MajorMinor;
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(editConfigStep);
                     return StepResult.Ok();
                 case "3":
                     config.AssemblyVersioningScheme = AssemblyVersioningScheme.MajorMinorPatch;
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(editConfigStep);
                     return StepResult.Ok();
                 case "4":
                     config.AssemblyVersioningScheme = AssemblyVersioningScheme.MajorMinorPatchTag;
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(editConfigStep);
                     return StepResult.Ok();
                 case "5":
                     config.AssemblyVersioningScheme = AssemblyVersioningScheme.None;
-                    steps.Enqueue(new EditConfigStep(Console, FileSystem));
+                    steps.Enqueue(editConfigStep);
                     return StepResult.Ok();
             }
 
@@ -55,9 +57,6 @@ namespace GitVersion.Configuration.Init.SetConfig
 
         }
 
-        protected override string DefaultResult
-        {
-            get { return "0"; }
-        }
+        protected override string DefaultResult => "0";
     }
 }

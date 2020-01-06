@@ -3,45 +3,39 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using LibGit2Sharp;
 
-[DebuggerDisplay("{DebuggerDisplay}")]
-public class MockCommit : Commit
+namespace GitVersionCore.Tests.Mocks
 {
-    static int commitCount = 1;
-    static DateTimeOffset when = DateTimeOffset.Now;
-
-    public MockCommit(ObjectId id = null)
+    [DebuggerDisplay("{" + nameof(DebuggerDisplay) + "}")]
+    public class MockCommit : Commit
     {
-        idEx = id ?? new ObjectId(Guid.NewGuid().ToString().Replace("-", "") + "00000000");
-        MessageEx = "Commit " + commitCount++;
-        ParentsEx = new List<Commit> { null };
-        CommitterEx = new Signature("Joe", "Joe@bloggs.net", when);
-        // Make sure each commit is a different time
-        when = when.AddSeconds(1);
-    }
+        private static int commitCount = 1;
+        private static DateTimeOffset when = DateTimeOffset.Now;
 
-    public string MessageEx;
-    public override string Message { get { return MessageEx; } }
-
-    public Signature CommitterEx;
-    public override Signature Committer { get { return CommitterEx; } }
-
-    ObjectId idEx;
-    public override ObjectId Id { get { return idEx; } }
-
-    public override string Sha { get { return idEx.Sha; } }
-
-    public IList<Commit> ParentsEx;
-    public override IEnumerable<Commit> Parents
-    {
-        get { return ParentsEx; }
-    }
-
-    // ReSharper disable once UnusedMember.Local
-    string DebuggerDisplay
-    {
-        get
+        public MockCommit(ObjectId id = null)
         {
-            return MessageEx;
+            idEx = id ?? new ObjectId(Guid.NewGuid().ToString().Replace("-", "") + "00000000");
+            MessageEx = "Commit " + commitCount++;
+            ParentsEx = new List<Commit> { null };
+            CommitterEx = new Signature("Joe", "Joe@bloggs.net", when);
+            // Make sure each commit is a different time
+            when = when.AddSeconds(1);
         }
+
+        public string MessageEx;
+        public override string Message => MessageEx;
+
+        public Signature CommitterEx;
+        public override Signature Committer => CommitterEx;
+
+        private readonly ObjectId idEx;
+        public override ObjectId Id => idEx;
+
+        public override string Sha => idEx.Sha;
+
+        public IList<Commit> ParentsEx;
+        public override IEnumerable<Commit> Parents => ParentsEx;
+
+        // ReSharper disable once UnusedMember.Local
+        private string DebuggerDisplay => MessageEx;
     }
 }

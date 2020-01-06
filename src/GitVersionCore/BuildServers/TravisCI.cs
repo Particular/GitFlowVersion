@@ -1,13 +1,20 @@
-﻿using System;
-namespace GitVersion
+using GitVersion.OutputVariables;
+using GitVersion.Logging;
+
+namespace GitVersion.BuildServers
 {
-    public class TravisCI : BuildServerBase
+    public class TravisCi : BuildServerBase
     {
+        public TravisCi(IEnvironment environment, ILog log) : base(environment, log)
+        {
+        }
+
         public const string EnvironmentVariableName = "TRAVIS";
+        protected override string EnvironmentVariable { get; } = EnvironmentVariableName;
 
         public override bool CanApplyToCurrentContext ()
         {
-            return "true".Equals(Environment.GetEnvironmentVariable(EnvironmentVariableName)) && "true".Equals(Environment.GetEnvironmentVariable("CI"));
+            return "true".Equals(Environment.GetEnvironmentVariable(EnvironmentVariable)) && "true".Equals(Environment.GetEnvironmentVariable("CI"));
         }
 
         public override string GenerateSetVersionMessage(VersionVariables variables)
@@ -19,14 +26,11 @@ namespace GitVersion
         {
             return new[]
             {
-                string.Format("GitVersion_{0}={1}", name, value)
+                $"GitVersion_{name}={value}"
             };
         }
 
-        public override bool PreventFetch ()
-        {
-            return true;
-        }
+        public override bool PreventFetch () => true;
     }
 }
 

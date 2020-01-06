@@ -1,216 +1,34 @@
+using System.Threading.Tasks;
+using GitVersion.Extensions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+
 namespace GitVersion
 {
-    using GitVersion.Helpers;
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.IO;
-    using System.Linq;
-    using System.Reflection;
-    using System.Text;
-
-    class Program
+    internal class Program
     {
-        static StringBuilder log = new StringBuilder();
-
-        static void Main()
+        private static async Task Main(string[] args)
         {
-            var exitCode = VerifyArgumentsAndRun();
-
-            if (Debugger.IsAttached)
-            {
-                Console.ReadKey();
-            }
-
-            if (exitCode != 0)
-            {
-                // Dump log to console if we fail to complete successfully
-                Console.Write(log.ToString());
-            }
-
-            Environment.Exit(exitCode);
+            await CreateHostBuilder(args).Build().RunAsync();
         }
 
-        static int VerifyArgumentsAndRun()
-        {
-            Arguments arguments = null;
-            try
-            {
-                var fileSystem = new FileSystem();
-                var argumentsWithoutExeName = GetArgumentsWithoutExeName();
-
-                try
+        private static IHostBuilder CreateHostBuilder(string[] args) =>
+            new HostBuilder()
+                .ConfigureAppConfiguration((hostContext, configApp) =>
                 {
-                    arguments = ArgumentParser.ParseArguments(argumentsWithoutExeName);
-                }
-                catch (Exception exception)
+                    configApp.AddCommandLine(args);
+                })
+                .ConfigureServices((hostContext, services) =>
                 {
-                    Console.WriteLine("Failed to parse arguments: {0}", string.Join(" ", argumentsWithoutExeName));
-                    if (!string.IsNullOrWhiteSpace(exception.Message))
-                    {
-                        Console.WriteLine();
-                        Console.WriteLine(exception.Message);
-                        Console.WriteLine();
-                    }
+                    services.AddModule(new GitVersionCoreModule());
+                    services.AddModule(new GitVersionExeModule());
 
-                    HelpWriter.Write();
-                    return 1;
-                }
+                    services.AddSingleton(sp => Options.Create(sp.GetService<IArgumentParser>().ParseArguments(args)));
 
-                if (arguments.IsVersion)
-                {
-                    var assembly = Assembly.GetExecutingAssembly();
-                    VersionWriter.Write(assembly);
-                    return 0;
-                }
-
-                if (arguments.IsHelp)
-                {
-                    HelpWriter.Write();
-                    return 0;
-                }
-
-                if (arguments.Diag)
-                {
-                    arguments.NoCache = true;
-                    arguments.Output = OutputType.BuildServer;
-                }
-
-                ConfigureLogging(arguments);
-#if NETDESKTOP
-                if (arguments.Diag)
-                {
-                    Logger.WriteInfo("Dumping commit graph: ");
-                    LibGitExtensions.DumpGraph(arguments.TargetPath, Logger.WriteInfo, 100);
-                }
-#endif
-                if (!Directory.Exists(arguments.TargetPath))
-                {
-                    Logger.WriteWarning(string.Format("The working directory '{0}' does not exist.", arguments.TargetPath));
-                }
-                else
-                {
-                    Logger.WriteInfo("Working directory: " + arguments.TargetPath);
-                }
-                VerifyConfiguration(arguments, fileSystem);
-
-                if (arguments.Init)
-                {
-                    ConfigurationProvider.Init(arguments.TargetPath, fileSystem, new ConsoleAdapter());
-                    return 0;
-                }
-                if (arguments.ShowConfig)
-                {
-                    Console.WriteLine(ConfigurationProvider.GetEffectiveConfigAsString(arguments.TargetPath, fileSystem));
-                    return 0;
-                }
-
-                if (!string.IsNullOrEmpty(arguments.Proj) || !string.IsNullOrEmpty(arguments.Exec))
-                {
-                    arguments.Output = OutputType.BuildServer;
-                }
-
-                SpecifiedArgumentRunner.Run(arguments, fileSystem);
-            }
-            catch (WarningException exception)
-            {
-                var error = string.Format("An error occurred:\r\n{0}", exception.Message);
-                Logger.WriteWarning(error);
-                return 1;
-            }
-            catch (Exception exception)
-            {
-                var error = string.Format("An unexpected error occurred:\r\n{0}", exception);
-                Logger.WriteError(error);
-
-                if (arguments != null)
-                {
-                    Logger.WriteInfo(string.Empty);
-                    Logger.WriteInfo("Attempting to show the current git graph (please include in issue): ");
-                    Logger.WriteInfo("Showing max of 100 commits");
-
-                    try
-                    {
-#if NETDESKTOP
-                        LibGitExtensions.DumpGraph(arguments.TargetPath, Logger.WriteInfo, 100);
-#endif
-                    }
-                    catch (Exception dumpGraphException)
-                    {
-                        Logger.WriteError("Couldn't dump the git graph due to the following error: " + dumpGraphException);
-                    }
-                }
-                return 1;
-            }
-
-            return 0;
-        }
-
-        static void VerifyConfiguration(Arguments arguments, IFileSystem fileSystem)
-        {
-            var gitPreparer = new GitPreparer(arguments.TargetUrl, arguments.DynamicRepositoryLocation, arguments.Authentication, arguments.NoFetch, arguments.TargetPath);
-            ConfigurationProvider.Verify(gitPreparer, fileSystem);
-        }
-
-        static void ConfigureLogging(Arguments arguments)
-        {
-            var writeActions = new List<Action<string>>
-            {
-                s => log.AppendLine(s)
-            };
-
-            if (arguments.Output == OutputType.BuildServer || arguments.LogFilePath == "console" || arguments.Init)
-            {
-                writeActions.Add(Console.WriteLine);
-            }
-
-            Exception exception = null;
-            if (arguments.LogFilePath != null && arguments.LogFilePath != "console")
-            {
-                try
-                {
-                    var logFileFullPath = Path.GetFullPath(arguments.LogFilePath);
-                    var logFile = new FileInfo(logFileFullPath);
-
-                    // NOTE: logFile.Directory will be null if the path is i.e. C:\logfile.log. @asbjornu
-                    if (logFile.Directory != null)
-                    {
-                        logFile.Directory.Create();
-                    }
-
-                    using (logFile.CreateText())
-                    {
-                    }
-
-                    writeActions.Add(x => WriteLogEntry(arguments, x));
-                }
-                catch (Exception ex)
-                {
-                    exception = ex;
-                }
-            }
-
-            Logger.SetLoggers(
-                s => writeActions.ForEach(a => { if (arguments.Verbosity >= VerbosityLevel.Debug) a(s); }),
-                s => writeActions.ForEach(a => { if (arguments.Verbosity >= VerbosityLevel.Info) a(s); }),
-                s => writeActions.ForEach(a => { if (arguments.Verbosity >= VerbosityLevel.Warn) a(s); }),
-                s => writeActions.ForEach(a => { if (arguments.Verbosity >= VerbosityLevel.Error) a(s); }));
-
-            if (exception != null)
-                Logger.WriteError(string.Format("Failed to configure logging for '{0}': {1}", arguments.LogFilePath, exception.Message));
-        }
-
-        static void WriteLogEntry(Arguments arguments, string s)
-        {
-            var contents = string.Format("{0:yyyy-MM-dd HH:mm:ss}\t\t{1}\r\n", DateTime.Now, s);
-            File.AppendAllText(arguments.LogFilePath, contents);
-        }
-
-        static List<string> GetArgumentsWithoutExeName()
-        {
-            return Environment.GetCommandLineArgs()
-                .Skip(1)
-                .ToList();
-        }
+                    services.AddHostedService<GitVersionApp>();
+                })
+                .UseConsoleLifetime();
     }
 }

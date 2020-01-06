@@ -1,23 +1,29 @@
-﻿namespace GitVersion
-{
-    using LibGit2Sharp;
-    using System;
-    using System.Linq;
+using LibGit2Sharp;
+using System;
+using System.Linq;
+using GitVersion.Configuration;
+using GitVersion.Logging;
+using GitVersion.Extensions;
 
+namespace GitVersion
+{
     /// <summary>
     /// Contextual information about where GitVersion is being run
     /// </summary>
     public class GitVersionContext
     {
-        public GitVersionContext(IRepository repository, string targetBranch, Config configuration, bool onlyEvaluateTrackedBranches = true, string commitId = null)
-             : this(repository, GitVersionContext.GetTargetBranch(repository, targetBranch), configuration, onlyEvaluateTrackedBranches, commitId)
+        public ILog Log { get; }
+
+        public GitVersionContext(IRepository repository, ILog log, string targetBranch, Config configuration, bool onlyEvaluateTrackedBranches = true, string commitId = null)
+             : this(repository, log, GetTargetBranch(repository, targetBranch), configuration, onlyEvaluateTrackedBranches, commitId)
         {
         }
 
-        public GitVersionContext(IRepository repository, Branch currentBranch, Config configuration, bool onlyEvaluateTrackedBranches = true, string commitId = null)
+        public GitVersionContext(IRepository repository, ILog log, Branch currentBranch, Config configuration, bool onlyEvaluateTrackedBranches = true, string commitId = null)
         {
+            Log = log;
             Repository = repository;
-            RepositoryMetadataProvider = new GitRepoMetadataProvider(repository, configuration);
+            RepositoryMetadataProvider = new GitRepoMetadataProvider(repository, log, configuration);
             FullConfiguration = configuration;
             OnlyEvaluateTrackedBranches = onlyEvaluateTrackedBranches;
 
@@ -26,7 +32,7 @@
 
             if (!string.IsNullOrWhiteSpace(commitId))
             {
-                Logger.WriteInfo(string.Format("Searching for specific commit '{0}'", commitId));
+                log.Info($"Searching for specific commit '{commitId}'");
 
                 var commit = repository.Commits.FirstOrDefault(c => string.Equals(c.Sha, commitId, StringComparison.OrdinalIgnoreCase));
                 if (commit != null)
@@ -35,13 +41,13 @@
                 }
                 else
                 {
-                    Logger.WriteWarning(string.Format("Commit '{0}' specified but not found", commitId));
+                    log.Warning($"Commit '{commitId}' specified but not found");
                 }
             }
 
             if (CurrentCommit == null)
             {
-                Logger.WriteInfo("Using latest commit on specified branch");
+                log.Info("Using latest commit on specified branch");
                 CurrentCommit = currentBranch.Tip;
             }
 
@@ -59,8 +65,7 @@
             CurrentCommitTaggedVersion = repository.Tags
                 .SelectMany(t =>
                 {
-                    SemanticVersion version;
-                    if (t.PeeledTarget() == CurrentCommit && SemanticVersion.TryParse(t.FriendlyName, Configuration.GitTagPrefix, out version))
+                    if (t.PeeledTarget() == CurrentCommit && SemanticVersion.TryParse(t.FriendlyName, Configuration.GitTagPrefix, out var version))
                         return new[] { version };
                     return new SemanticVersion[0];
                 })
@@ -71,32 +76,33 @@
         /// <summary>
         /// Contains the raw configuration, use Configuration for specific config based on the current GitVersion context.
         /// </summary>
-        public Config FullConfiguration { get; private set; }
-        public SemanticVersion CurrentCommitTaggedVersion { get; private set; }
-        public bool OnlyEvaluateTrackedBranches { get; private set; }
+        public Config FullConfiguration { get; }
+        public SemanticVersion CurrentCommitTaggedVersion { get; }
+        public bool OnlyEvaluateTrackedBranches { get; }
         public EffectiveConfiguration Configuration { get; private set; }
-        public IRepository Repository { get; private set; }
-        public Branch CurrentBranch { get; private set; }
-        public Commit CurrentCommit { get; private set; }
-        public bool IsCurrentCommitTagged { get; private set; }
-        public GitRepoMetadataProvider RepositoryMetadataProvider { get; private set; }
+        public IRepository Repository { get; }
+        public Branch CurrentBranch { get; }
+        public Commit CurrentCommit { get; }
+        public bool IsCurrentCommitTagged { get; }
+        public GitRepoMetadataProvider RepositoryMetadataProvider { get; }
 
-        void CalculateEffectiveConfiguration()
+        private void CalculateEffectiveConfiguration()
         {
-            var currentBranchConfig = BranchConfigurationCalculator.GetBranchConfiguration(this, CurrentBranch);
+            IBranchConfigurationCalculator calculator = new BranchConfigurationCalculator(Log, this);
+            var currentBranchConfig = calculator.GetBranchConfiguration(CurrentBranch);
 
             if (!currentBranchConfig.VersioningMode.HasValue)
-                throw new Exception(string.Format("Configuration value for 'Versioning mode' for branch {0} has no value. (this should not happen, please report an issue)", currentBranchConfig.Name));
+                throw new Exception($"Configuration value for 'Versioning mode' for branch {currentBranchConfig.Name} has no value. (this should not happen, please report an issue)");
             if (!currentBranchConfig.Increment.HasValue)
-                throw new Exception(string.Format("Configuration value for 'Increment' for branch {0} has no value. (this should not happen, please report an issue)", currentBranchConfig.Name));
+                throw new Exception($"Configuration value for 'Increment' for branch {currentBranchConfig.Name} has no value. (this should not happen, please report an issue)");
             if (!currentBranchConfig.PreventIncrementOfMergedBranchVersion.HasValue)
-                throw new Exception(string.Format("Configuration value for 'PreventIncrementOfMergedBranchVersion' for branch {0} has no value. (this should not happen, please report an issue)", currentBranchConfig.Name));
+                throw new Exception($"Configuration value for 'PreventIncrementOfMergedBranchVersion' for branch {currentBranchConfig.Name} has no value. (this should not happen, please report an issue)");
             if (!currentBranchConfig.TrackMergeTarget.HasValue)
-                throw new Exception(string.Format("Configuration value for 'TrackMergeTarget' for branch {0} has no value. (this should not happen, please report an issue)", currentBranchConfig.Name));
+                throw new Exception($"Configuration value for 'TrackMergeTarget' for branch {currentBranchConfig.Name} has no value. (this should not happen, please report an issue)");
             if (!currentBranchConfig.TracksReleaseBranches.HasValue)
-                throw new Exception(string.Format("Configuration value for 'TracksReleaseBranches' for branch {0} has no value. (this should not happen, please report an issue)", currentBranchConfig.Name));
+                throw new Exception($"Configuration value for 'TracksReleaseBranches' for branch {currentBranchConfig.Name} has no value. (this should not happen, please report an issue)");
             if (!currentBranchConfig.IsReleaseBranch.HasValue)
-                throw new Exception(string.Format("Configuration value for 'IsReleaseBranch' for branch {0} has no value. (this should not happen, please report an issue)", currentBranchConfig.Name));
+                throw new Exception($"Configuration value for 'IsReleaseBranch' for branch {currentBranchConfig.Name} has no value. (this should not happen, please report an issue)");
 
             if (!FullConfiguration.AssemblyVersioningScheme.HasValue)
                 throw new Exception("Configuration value for 'AssemblyVersioningScheme' has no value. (this should not happen, please report an issue)");
@@ -163,7 +169,9 @@
             {
                 // There are some edge cases where HEAD is not pointing to the desired branch.
                 // Therefore it's important to verify if 'currentBranch' is indeed the desired branch.
-                if (desiredBranch.CanonicalName != targetBranch)
+
+                // CanonicalName can be "refs/heads/develop", so we need to check for "/{TargetBranch}" as well
+                if (!desiredBranch.CanonicalName.IsBranch(targetBranch))
                 {
                     // In the case where HEAD is not the desired branch, try to find the branch with matching name
                     desiredBranch = repository?.Branches?
@@ -173,7 +181,7 @@
                             b.NameWithoutRemote() == targetBranch);
 
                     // Failsafe in case the specified branch is invalid
-                    desiredBranch = desiredBranch ?? repository.Head;
+                    desiredBranch ??= repository.Head;
                 }
             }
 

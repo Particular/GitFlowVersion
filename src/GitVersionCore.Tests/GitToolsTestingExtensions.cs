@@ -1,16 +1,23 @@
+using System;
+using GitTools.Testing;
+using GitVersion;
+using GitVersion.Configuration;
+using GitVersion.OutputVariables;
+using LibGit2Sharp;
+using Shouldly;
+using GitVersion.Logging;
+using GitVersion.VersionCalculation;
+using GitVersionCore.Tests.VersionCalculation;
+using Microsoft.Extensions.Options;
+using GitVersion.Extensions;
+
 namespace GitVersionCore.Tests
 {
-    using System;
-    using GitTools.Testing;
-    using GitVersion;
-    using LibGit2Sharp;
-    using Shouldly;
-
     public static class GitToolsTestingExtensions
     {
         public static Config ApplyDefaults(this Config config)
         {
-            ConfigurationProvider.ApplyDefaultsTo(config);
+            config.Reset();
             return config;
         }
 
@@ -19,11 +26,18 @@ namespace GitVersionCore.Tests
             if (configuration == null)
             {
                 configuration = new Config();
-                ConfigurationProvider.ApplyDefaultsTo(configuration);
+                configuration.Reset();
             }
-            var gitVersionContext = new GitVersionContext(repository ?? fixture.Repository, targetBranch, configuration, isForTrackedBranchOnly, commitId);
+
+            var log = new NullLog();
+            var metaDataCalculator = new MetaDataCalculator();
+            var baseVersionCalculator = new TestBaseVersionStrategiesCalculator(log);
+            var mainlineVersionCalculator = new MainlineVersionCalculator(log, metaDataCalculator);
+            var nextVersionCalculator = new NextVersionCalculator(log, metaDataCalculator, baseVersionCalculator, mainlineVersionCalculator);
+            var variableProvider = new VariableProvider(nextVersionCalculator, new TestEnvironment());
+            var gitVersionContext = new GitVersionContext(repository ?? fixture.Repository, log, targetBranch, configuration, isForTrackedBranchOnly, commitId);
             var executeGitVersion = ExecuteGitVersion(gitVersionContext);
-            var variables = VariableProvider.GetVariablesFor(executeGitVersion, gitVersionContext.Configuration, gitVersionContext.IsCurrentCommitTagged);
+            var variables = variableProvider.GetVariablesFor(executeGitVersion, gitVersionContext.Configuration, gitVersionContext.IsCurrentCommitTagged);
             try
             {
                 return variables;
@@ -43,7 +57,7 @@ namespace GitVersionCore.Tests
 
         public static void AssertFullSemver(this RepositoryFixtureBase fixture, Config configuration, string fullSemver, IRepository repository = null, string commitId = null, bool isForTrackedBranchOnly = true, string targetBranch = null)
         {
-            ConfigurationProvider.ApplyDefaultsTo(configuration);
+            configuration.Reset();
             Console.WriteLine("---------");
 
             try
@@ -62,18 +76,30 @@ namespace GitVersionCore.Tests
             }
         }
 
-        static SemanticVersion ExecuteGitVersion(GitVersionContext context)
+        private static SemanticVersion ExecuteGitVersion(GitVersionContext context)
         {
-            var vf = new GitVersionFinder();
+            var log = new NullLog();
+            var metadataCalculator = new MetaDataCalculator();
+            var baseVersionCalculator = new TestBaseVersionStrategiesCalculator(log);
+            var mainlineVersionCalculator = new MainlineVersionCalculator(log, metadataCalculator);
+            var nextVersionCalculator = new NextVersionCalculator(log, metadataCalculator, baseVersionCalculator, mainlineVersionCalculator);
+            var vf = new GitVersionFinder(log, nextVersionCalculator);
             return vf.FindVersion(context);
         }
 
         /// <summary>
         /// Simulates running on build server
         /// </summary>
-        public static void InitialiseRepo(this RemoteRepositoryFixture fixture)
+        public static void InitializeRepo(this RemoteRepositoryFixture fixture)
         {
-            new GitPreparer(null, null, new Authentication(), false, fixture.LocalRepositoryFixture.RepositoryPath).Initialise(true, null);
+            var log = new NullLog();
+
+            var arguments = new Arguments
+            {
+                Authentication = new Authentication(),
+                TargetPath = fixture.LocalRepositoryFixture.RepositoryPath
+            };
+            new GitPreparer(log, new TestEnvironment(), Options.Create(arguments)).Prepare(true, null);
         }
     }
 }

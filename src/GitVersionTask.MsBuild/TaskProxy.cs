@@ -1,10 +1,10 @@
-namespace GitVersionTask.MsBuild
-{
-    using System;
-    using System.Reflection;
-    using GitVersionTask.MsBuild.LibGit2Sharp;
-    using GitVersionTask.MsBuild.Tasks;
+using System;
+using System.Reflection;
+using GitVersion.MSBuildTask.LibGit2Sharp;
+using GitVersion.MSBuildTask.Tasks;
 
+namespace GitVersion.MSBuildTask
+{
     public static class TaskProxy
     {
         public static Func<GetVersion, bool> GetVersion;
@@ -14,12 +14,12 @@ namespace GitVersionTask.MsBuild
 
         static TaskProxy()
         {
-#if !NET461
+#if !NETFRAMEWORK
             GitLoaderContext.Init("GitVersionCore", "LibGit2Sharp");
 #endif
             LibGit2SharpLoader.LoadAssembly("GitVersionTask");
 
-            var type = LibGit2SharpLoader.Instance.Assembly.GetType("GitVersionTask.GitVersionTasks", throwOnError: true).GetTypeInfo();
+            var type = LibGit2SharpLoader.Instance.Assembly.GetType("GitVersion.MSBuildTask.GitVersionTasks", throwOnError: true).GetTypeInfo();
 
             GetVersion                    = GetMethod<GetVersion>(type, nameof(GetVersion));
             GenerateGitVersionInformation = GetMethod<GenerateGitVersionInformation>(type, nameof(GenerateGitVersionInformation));

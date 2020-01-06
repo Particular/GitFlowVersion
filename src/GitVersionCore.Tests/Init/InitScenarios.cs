@@ -1,13 +1,18 @@
-﻿namespace GitVersionCore.Tests.Init
-{
-    using GitVersion;
-    using GitVersion.Configuration.Init;
-    using GitVersion.Configuration.Init.Wizard;
-    using NUnit.Framework;
-    using Shouldly;
-    using TestStack.ConventionTests;
-    using TestStack.ConventionTests.ConventionData;
+using System.IO;
+using System.Runtime.InteropServices;
+using GitVersion;
+using GitVersion.Configuration;
+using GitVersion.Configuration.Init;
+using GitVersion.Configuration.Init.Wizard;
+using GitVersion.Extensions;
+using GitVersion.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using NUnit.Framework;
+using Shouldly;
 
+namespace GitVersionCore.Tests.Init
+{
     [TestFixture]
     public class InitScenarios : TestBase
     {
@@ -22,18 +27,30 @@
         [Description("Won't run on Mono due to source information not being available for ShouldMatchApproved.")]
         public void CanSetNextVersion()
         {
-            var testFileSystem = new TestFileSystem();
-            var testConsole = new TestConsole("3", "2.0.0", "0");
-            ConfigurationProvider.Init("c:\\proj", testFileSystem, testConsole);
+            ILog log = new NullLog();
+            IFileSystem fileSystem = new TestFileSystem();
+            IConsole testConsole = new TestConsole("3", "2.0.0", "0");
 
-            testFileSystem.ReadAllText("c:\\proj\\GitVersion.yml").ShouldMatchApproved();
-        }
+            var serviceCollections = new ServiceCollection();
+            serviceCollections.AddModule(new GitVersionInitModule());
 
-        [Test]
-        public void DefaultResponsesDoNotThrow()
-        {
-            var steps = Types.InAssemblyOf<EditConfigStep>(t => t.IsSubclassOf(typeof(ConfigInitWizardStep)) && t.IsConcreteClass());
-            Convention.Is(new InitStepsDefaultResponsesDoNotThrow(), steps);
+            serviceCollections.AddSingleton(log);
+            serviceCollections.AddSingleton(fileSystem);
+            serviceCollections.AddSingleton(testConsole);
+
+            var serviceProvider = serviceCollections.BuildServiceProvider();
+
+            var stepFactory = new ConfigInitStepFactory(serviceProvider);
+            var configInitWizard = new ConfigInitWizard(testConsole, stepFactory);
+            var configFileLocator = new DefaultConfigFileLocator(fileSystem, log);
+            var workingDirectory = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "c:\\proj" : "/proj";
+
+            var gitPreparer = new GitPreparer(log, new TestEnvironment(), Options.Create(new Arguments { TargetPath = workingDirectory }));
+            var configurationProvider = new ConfigProvider(fileSystem, log, configFileLocator, gitPreparer, configInitWizard);
+
+            configurationProvider.Init(workingDirectory);
+
+            fileSystem.ReadAllText(Path.Combine(workingDirectory, "GitVersion.yml")).ShouldMatchApproved();
         }
     }
 }

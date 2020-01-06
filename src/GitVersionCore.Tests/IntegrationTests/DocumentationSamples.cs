@@ -1,18 +1,18 @@
 using System;
 using GitTools.Testing;
-using GitVersion;
-using GitVersionCore.Tests;
 using NUnit.Framework;
 using Shouldly;
+using GitVersion.Extensions;
 
-[TestFixture]
-public class DocumentationSamples : TestBase
+namespace GitVersionCore.Tests.IntegrationTests
 {
-    [Test]
-    public void GitFlowFeatureBranch()
+    [TestFixture]
+    public class DocumentationSamples : TestBase
     {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitFlowFeatureBranch()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("master");
             fixture.SequenceDiagram.Participant("develop");
 
@@ -37,17 +37,15 @@ public class DocumentationSamples : TestBase
             fixture.MergeNoFF("feature/myfeature");
             fixture.SequenceDiagram.Destroy("feature/myfeature");
             fixture.SequenceDiagram.NoteOver("Feature branches should\r\n" +
-                             "be deleted once merged", "feature/myfeature");
+                                             "be deleted once merged", "feature/myfeature");
             fixture.AssertFullSemver("1.3.0-alpha.3");
             Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
         }
-    }
 
-    [Test]
-    public void GitFlowPullRequestBranch()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitFlowPullRequestBranch()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("master");
             fixture.SequenceDiagram.Participant("develop");
 
@@ -72,17 +70,15 @@ public class DocumentationSamples : TestBase
             fixture.MergeNoFF("pull/2/merge");
             fixture.SequenceDiagram.Destroy("pull/2/merge");
             fixture.SequenceDiagram.NoteOver("Feature branches/pr's should\r\n" +
-                             "be deleted once merged", "pull/2/merge");
+                                             "be deleted once merged", "pull/2/merge");
             fixture.AssertFullSemver("1.3.0-alpha.3");
             Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
         }
-    }
 
-    [Test]
-    public void GitFlowHotfixBranch()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitFlowHotfixBranch()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("develop");
             fixture.SequenceDiagram.Participant("master");
 
@@ -107,13 +103,11 @@ public class DocumentationSamples : TestBase
             fixture.ApplyTag("1.2.1");
             Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
         }
-    }
 
-    [Test]
-    public void GitFlowMinorRelease()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitFlowMinorRelease()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("master");
             fixture.SequenceDiagram.Participant("develop");
 
@@ -165,13 +159,11 @@ public class DocumentationSamples : TestBase
             fixture.AssertFullSemver("1.4.0-alpha.4");
             Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
         }
-    }
 
-    [Test]
-    public void GitFlowMajorRelease()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitFlowMajorRelease()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("master");
             fixture.SequenceDiagram.Participant("develop");
 
@@ -223,13 +215,11 @@ public class DocumentationSamples : TestBase
             fixture.AssertFullSemver("2.1.0-alpha.4");
             Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
         }
-    }
 
-    [Test]
-    public void GitFlowSupportHotfixRelease()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitFlowSupportHotfixRelease()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("develop");
             fixture.SequenceDiagram.Participant("master");
 
@@ -267,13 +257,11 @@ public class DocumentationSamples : TestBase
             fixture.AssertFullSemver("1.3.1");
             Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
         }
-    }
 
-    [Test]
-    public void GitFlowSupportMinorRelease()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitFlowSupportMinorRelease()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("develop");
             fixture.SequenceDiagram.Participant("master");
 
@@ -312,14 +300,12 @@ public class DocumentationSamples : TestBase
             fixture.AssertFullSemver("1.4.0");
             Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
         }
-    }
 
 
-    [Test]
-    public void GitHubFlowFeatureBranch()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitHubFlowFeatureBranch()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("master");
 
             // GitFlow setup
@@ -342,16 +328,14 @@ public class DocumentationSamples : TestBase
             fixture.MergeNoFF("feature/myfeature");
             fixture.SequenceDiagram.Destroy("feature/myfeature");
             fixture.SequenceDiagram.NoteOver("Feature branches should\r\n" +
-                             "be deleted once merged", "feature/myfeature");
+                                             "be deleted once merged", "feature/myfeature");
             fixture.AssertFullSemver("1.2.1+3");
         }
-    }
 
-    [Test]
-    public void GitHubFlowPullRequestBranch()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitHubFlowPullRequestBranch()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("master");
 
             // GitFlow setup
@@ -374,16 +358,14 @@ public class DocumentationSamples : TestBase
             fixture.MergeNoFF("pull/2/merge");
             fixture.SequenceDiagram.Destroy("pull/2/merge");
             fixture.SequenceDiagram.NoteOver("Feature branches/pr's should\r\n" +
-                             "be deleted once merged", "pull/2/merge");
+                                             "be deleted once merged", "pull/2/merge");
             fixture.AssertFullSemver("1.2.1+3");
         }
-    }
 
-    [Test]
-    public void GitHubFlowMajorRelease()
-    {
-        using (var fixture = new EmptyRepositoryFixture())
+        [Test]
+        public void GitHubFlowMajorRelease()
         {
+            using var fixture = new EmptyRepositoryFixture();
             fixture.SequenceDiagram.Participant("master");
 
             fixture.Repository.MakeACommit();

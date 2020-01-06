@@ -19,6 +19,12 @@ The build script to execute.
 The build script target to run.
 .PARAMETER Configuration
 The build configuration to use.
+.PARAMETER DockerDistro
+The docker ditro to use.
+.PARAMETER DockerDotnetVersion
+The dotnet version for docker to use.
+.PARAMETER SkipUnitTest
+Skip executing the tests.
 .PARAMETER Verbosity
 Specifies the amount of information to be displayed.
 .PARAMETER WhatIf
@@ -36,6 +42,9 @@ Param(
     [string]$Script = "build.cake",
     [string]$Target = "Default",
     [string]$Configuration = "Release",
+    [string]$DockerDistro = "",
+    [string]$DockerDotnetVersion = "",
+    [switch]$SkipUnitTest,
     [ValidateSet("Quiet", "Minimal", "Normal", "Verbose", "Diagnostic")]
     [string]$Verbosity = "Verbose",
     [Alias("DryRun","Noop")]
@@ -51,14 +60,14 @@ $DotNetChannel = 'LTS'
 $PSScriptRoot = Split-Path $MyInvocation.MyCommand.Path -Parent
 
 [string] $CakeVersion = ''
-[string] $DotNetVersion= ''
-foreach($line in Get-Content "$PSScriptRoot\build.config")
+[string[]] $DotNetVersion= ''
+foreach($line in Get-Content (Join-Path $PSScriptRoot 'build.config'))
 {
   if ($line -like 'CAKE_VERSION=*') {
       $CakeVersion = $line.SubString(13)
   }
   elseif ($line -like 'DOTNET_VERSION=*') {
-      $DotNetVersion =$line.SubString(15)
+      $DotNetVersion = $line.SubString(15).Split(',')
   }
 }
 
@@ -104,34 +113,49 @@ Function Remove-PathVariable([string]$VariableToRemove)
     }
 }
 
-# Get .NET Core CLI path if installed.
-$FoundDotNetCliVersion = $null;
-if (Get-Command dotnet -ErrorAction SilentlyContinue) {
-    $FoundDotNetCliVersion = dotnet --version;
-}
-
-if($FoundDotNetCliVersion -ne $DotNetVersion) {
-    $InstallPath = Join-Path $PSScriptRoot ".dotnet"
-    if (!(Test-Path $InstallPath)) {
-        New-Item -Path $InstallPath -ItemType Directory -Force | Out-Null;
+Function Add-PathVariable([string]$PathToAdd)
+{
+    $SplitChar = ';'
+    if ($IsMacOS -or $IsLinux) {
+        $SplitChar = ':'
     }
 
+    $env:PATH = "$($PathToAdd)$($SplitChar)$env:PATH"
+}
+
+Function Install-Dotnet($DotNetVersion)
+{
     if ($IsMacOS -or $IsLinux) {
-        (New-Object System.Net.WebClient).DownloadFile($DotNetUnixInstallerUri, "$InstallPath\dotnet-install.sh");
-        & bash $InstallPath\dotnet-install.sh --version "$DotNetVersion" --install-dir "$InstallPath" --channel "$DotNetChannel" --no-path
+        $ScriptPath = Join-Path $InstallPath 'dotnet-install.sh'
+        (New-Object System.Net.WebClient).DownloadFile($DotNetUnixInstallerUri, $ScriptPath);
+
+        & bash $ScriptPath --version "$DotNetVersion" --install-dir "$InstallPath" --channel "$DotNetChannel" --no-path
     }
     else {
-        (New-Object System.Net.WebClient).DownloadFile($DotNetInstallerUri, "$InstallPath\dotnet-install.ps1");
-        & $InstallPath\dotnet-install.ps1 -Channel $DotNetChannel -Version $DotNetVersion -InstallDir $InstallPath;
-    }
+        $ScriptPath = Join-Path $InstallPath 'dotnet-install.ps1'
+        (New-Object System.Net.WebClient).DownloadFile($DotNetInstallerUri, $ScriptPath);
 
-    Remove-PathVariable "$InstallPath"
-    $env:PATH = "$InstallPath;$env:PATH"
+        & $ScriptPath -Channel $DotNetChannel -Version $DotNetVersion -InstallDir $InstallPath;
+    }
 }
+
+# Get .NET Core CLI path if installed.
+$InstallPath = Join-Path $PSScriptRoot ".dotnet"
+if (!(Test-Path $InstallPath)) {
+    New-Item -Path $InstallPath -ItemType Directory -Force | Out-Null;
+}
+
+foreach($version in $DotNetVersion)
+{
+    Install-Dotnet $version
+}
+
+Remove-PathVariable "$InstallPath"
+Add-PathVariable "$InstallPath"
+$env:DOTNET_ROOT=$InstallPath
 
 $env:DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
 $env:DOTNET_CLI_TELEMETRY_OPTOUT=1
-
 
 ###########################################################################
 # INSTALL CAKE
@@ -146,7 +170,8 @@ if ($CakeInstalledVersion -eq $CakeVersion) {
     $CakeExePath = (Get-Command dotnet-cake).Source
 }
 else {
-    $CakePath = Join-Path $ToolPath ".store\cake.tool\$CakeVersion"
+    $CakePath = [System.IO.Path]::Combine($ToolPath, '.store', 'cake.tool', $CakeVersion) # Old PowerShell versions Join-Path only supports one child path
+
     $CakeExePath = (Get-ChildItem -Path $ToolPath -Filter "dotnet-cake*" -File| ForEach-Object FullName | Select-Object -First 1)
 
 
@@ -168,16 +193,20 @@ else {
 }
 
 # ###########################################################################
-# # RUN BUILD SCRIPT
+# RUN BUILD SCRIPT
 # ###########################################################################
 
 # Build the argument list.
+
+$env:ENABLED_UNIT_TESTS = !$SkipUnitTest
 $Arguments = @{
     target=$Target;
     configuration=$Configuration;
     verbosity=$Verbosity;
     dryrun=$WhatIf;
     nuget_useinprocessclient=$true;
+    docker_distro=$DockerDistro;
+    docker_dotnetversion=$DockerDotnetVersion;
 }.GetEnumerator() | ForEach-Object { "--{0}=`"{1}`"" -f $_.key, $_.value };
 
 # Start Cake
