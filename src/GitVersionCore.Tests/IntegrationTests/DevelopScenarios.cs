@@ -291,4 +291,17 @@ namespace GitVersionCore.Tests.IntegrationTests
             fixture.AssertFullSemver("1.0.0-alpha.5");
         }
     }
+
+    [Test]
+    public void ShouldProvideTheCorrectVersionEvenIfPreReleaseLabelExistsInTheGitTag()
+    {
+        using (var fixture = new EmptyRepositoryFixture())
+        {
+            fixture.Repository.MakeACommit();
+            fixture.ApplyTag("1.0.0-oreo.1");
+            fixture.BranchTo("develop");
+            fixture.Repository.MakeACommit();
+            fixture.AssertFullSemver("1.1.0-alpha.1");
+        }
+    }
 }
