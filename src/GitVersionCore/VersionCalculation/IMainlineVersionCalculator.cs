@@ -1,9 +1,10 @@
-using GitVersion.VersionCalculation.BaseVersionCalculators;
+using LibGit2Sharp;
 
 namespace GitVersion.VersionCalculation
 {
     public interface IMainlineVersionCalculator
     {
-        SemanticVersion FindMainlineModeVersion(BaseVersion baseVersion, GitVersionContext context);
+        SemanticVersion FindMainlineModeVersion(BaseVersion baseVersion);
+        SemanticVersionBuildMetaData CreateVersionBuildMetaData(Commit baseVersionSource);
     }
 }
