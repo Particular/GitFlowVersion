@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 using GitTools.Testing;
@@ -10,6 +11,7 @@ using GitVersion.VersionCalculation;
 using GitVersionCore.Tests.Helpers;
 using LibGit2Sharp;
 using NUnit.Framework;
+using Shouldly;
 
 namespace GitVersionCore.Tests.IntegrationTests
 {
@@ -19,6 +21,32 @@ namespace GitVersionCore.Tests.IntegrationTests
         {
             VersioningMode = VersioningMode.Mainline
         };
+
+        [Test]
+        public void GivenARemoteGitRepositoryWithCommitsThenClonedLocalDevelopShouldMatchRemoteVersion()
+        {
+            using var fixture = new RemoteRepositoryFixture();
+            fixture.AssertFullSemver("0.1.4", config);
+            fixture.BranchTo("develop");
+            fixture.AssertFullSemver("0.2.0-alpha.0", config);
+            Console.WriteLine(fixture.SequenceDiagram.GetDiagram());
+            var local = fixture.CloneRepository();
+            fixture.AssertFullSemver("0.2.0-alpha.0", config, repository: local.Repository);
+            local.Repository.DumpGraph();
+        }
+
+        [Test]
+        public void GivenNoMasterThrowsWarning()
+        {
+            using var fixture = new EmptyRepositoryFixture();
+            fixture.Repository.MakeACommit();
+            fixture.Repository.MakeATaggedCommit("1.0.0");
+            fixture.Repository.MakeACommit();
+            Commands.Checkout(fixture.Repository, fixture.Repository.CreateBranch("develop"));
+            fixture.Repository.Branches.Remove(fixture.Repository.Branches["master"]);
+
+            Should.Throw<WarningException>(() => fixture.AssertFullSemver("1.1.0-alpha.1", config));
+        }
 
         [Test]
         public void VerifyNonMasterMainlineVersionIdenticalAsMaster()
