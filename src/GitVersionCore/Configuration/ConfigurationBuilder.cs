@@ -256,6 +256,7 @@ namespace GitVersion.Configuration
                                 Tag = "beta",
                                 Increment = IncrementStrategy.Patch,
                                 PreReleaseWeight = 30000,
+                                IsReleaseBranch = true
                             });
 
             AddBranchConfig(Config.SupportBranchKey,
